@@ -4,7 +4,7 @@ import { speakArabic } from '../utils/tts.js'
 import { g } from '../utils/user.js'
 import { playCorrect, playWrong } from '../utils/sfx.js'
 import { addXP, XP_CORRECT, LEVEL_NAMES } from '../utils/xp.js'
-import { checkAndUnlock, getAchievementStats, incrementQuizCount } from '../utils/achievements.js'
+import { checkAndUnlock, getAchievementStats, incrementQuizCount, ACHIEVEMENTS } from '../utils/achievements.js'
 import { getStreak, getTotalStudyDays } from '../utils/streak.js'
 
 function shuffle(arr) {
@@ -52,6 +52,7 @@ export default function QuizMode({ categoryId, onBack }) {
   const [gameOver, setGameOver] = useState(false)
   const [lostHeartIndex, setLostHeartIndex] = useState(null)
   const [levelUpInfo, setLevelUpInfo] = useState(null)
+  const [achievementToast, setAchievementToast] = useState(null)
   const autoAdvanceTimer = useRef(null)
   const xpFloatTimer = useRef(null)
 
@@ -96,7 +97,7 @@ export default function QuizMode({ categoryId, onBack }) {
     const isPerfect = pct === 100
     incrementQuizCount(isPerfect)
     const stats = getAchievementStats()
-    checkAndUnlock({
+    const newAch = checkAndUnlock({
       streak: getStreak(),
       xp: (() => { try { return parseInt(localStorage.getItem('arabic_xp') || '0') } catch { return 0 } })(),
       quizCount: stats.quizCount || 0,
@@ -104,6 +105,10 @@ export default function QuizMode({ categoryId, onBack }) {
       matchCount: stats.matchCount || 0,
       totalDays: getTotalStudyDays()
     })
+    if (newAch.length > 0) {
+      const ach = ACHIEVEMENTS.find(a => a.id === newAch[0])
+      if (ach) { setAchievementToast(ach); setTimeout(() => setAchievementToast(null), 2500) }
+    }
   }, [done, gameOver])
 
   const handleNext = useCallback(() => {
@@ -350,6 +355,15 @@ export default function QuizMode({ categoryId, onBack }) {
             <div className="levelup-level">רמה {levelUpInfo.newLevel}</div>
             <div className="levelup-name">{levelUpInfo.name}</div>
             <button className="levelup-btn" onClick={() => setLevelUpInfo(null)}>המשך →</button>
+          </div>
+        </div>
+      )}
+      {achievementToast && (
+        <div className="achievement-toast">
+          <span>{achievementToast.emoji}</span>
+          <div>
+            <div className="ach-toast-title">🏅 הישג חדש!</div>
+            <div className="ach-toast-name">{achievementToast.title}</div>
           </div>
         </div>
       )}

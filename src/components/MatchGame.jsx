@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useMemo } from 'react'
 import { getAllWords, getCategoryById, categories } from '../data/words.js'
 import { g } from '../utils/user.js'
 import { speakArabic } from '../utils/tts.js'
-import { incrementMatchCount, checkAndUnlock, getAchievementStats } from '../utils/achievements.js'
+import { incrementMatchCount, checkAndUnlock, getAchievementStats, ACHIEVEMENTS } from '../utils/achievements.js'
 import { getStreak, getTotalStudyDays } from '../utils/streak.js'
 
 function shuffle(arr) {
@@ -23,6 +23,7 @@ export default function MatchGame({ categoryId, onBack }) {
   const [score, setScore] = useState(0)
   const [errors, setErrors] = useState(0)
   const [done, setDone] = useState(false)
+  const [achievementToast, setAchievementToast] = useState(null)
   const [round, setRound] = useState(1)
   const [allWordsList, setAllWordsList] = useState([])
 
@@ -58,13 +59,17 @@ export default function MatchGame({ categoryId, onBack }) {
     if (!done) return
     incrementMatchCount()
     const stats = getAchievementStats()
-    checkAndUnlock({
+    const newAch = checkAndUnlock({
       streak: getStreak(),
       xp: (() => { try { return parseInt(localStorage.getItem('arabic_xp') || '0') } catch { return 0 } })(),
       quizCount: stats.quizCount || 0,
       matchCount: stats.matchCount || 0,
       totalDays: getTotalStudyDays()
     })
+    if (newAch.length > 0) {
+      const ach = ACHIEVEMENTS.find(a => a.id === newAch[0])
+      if (ach) { setAchievementToast(ach); setTimeout(() => setAchievementToast(null), 2500) }
+    }
   }, [done])
 
   // Shuffle hebrew column once per pairs change (not on every render)
@@ -201,6 +206,15 @@ export default function MatchGame({ categoryId, onBack }) {
   // ── Main game board ──────────────────────────────────────────────────────────
   return (
     <div className="match-screen">
+      {achievementToast && (
+        <div className="achievement-toast">
+          <span>{achievementToast.emoji}</span>
+          <div>
+            <div className="ach-toast-title">🏅 הישג חדש!</div>
+            <div className="ach-toast-name">{achievementToast.title}</div>
+          </div>
+        </div>
+      )}
       <div className="quiz-header">
         <div className="quiz-top-row">
           <button className="back-btn" onClick={onBack}>←</button>

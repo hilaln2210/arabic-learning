@@ -5,7 +5,7 @@ import { updateSRS, getDueWords } from '../utils/srs.js'
 import { speakArabic } from '../utils/tts.js'
 import { g, isSoundEnabled, isAutoplayEnabled } from '../utils/user.js'
 import { addXP, XP_CORRECT, LEVEL_NAMES } from '../utils/xp.js'
-import { checkAndUnlock, getAchievementStats } from '../utils/achievements.js'
+import { checkAndUnlock, getAchievementStats, ACHIEVEMENTS } from '../utils/achievements.js'
 import { playCorrect, playWrong } from '../utils/sfx.js'
 
 function recordDailyWord() {
@@ -136,6 +136,7 @@ export default function StudyMode({ categoryId, onBack }) {
   const [missedIds, setMissedIds] = useState([]) // words marked dunno this session
   const [reviewWords, setReviewWords] = useState(null) // null = normal, array = review mode
   const [levelUpInfo, setLevelUpInfo] = useState(null)
+  const [achievementToast, setAchievementToast] = useState(null)
 
   const FUNNY_MESSAGES = [
     `נו באמת, זו כבר הפעם ה-{n}! 😅 החלפתי לך טריק חדש 👇`,
@@ -215,7 +216,11 @@ export default function StudyMode({ categoryId, onBack }) {
     saveProgress(updated)
     const totalKnown = Object.values(updated).filter(v => v === 'known').length
     const stats = getAchievementStats()
-    checkAndUnlock({ totalKnown, streak: getStreak(), xp: xpResult.newXP, quizCount: stats.quizCount || 0, perfectQuiz: stats.perfectQuiz || 0, matchCount: stats.matchCount || 0, totalDays: getTotalStudyDays() })
+    const newAch = checkAndUnlock({ totalKnown, streak: getStreak(), xp: xpResult.newXP, quizCount: stats.quizCount || 0, perfectQuiz: stats.perfectQuiz || 0, matchCount: stats.matchCount || 0, totalDays: getTotalStudyDays() })
+    if (newAch.length > 0) {
+      const ach = ACHIEVEMENTS.find(a => a.id === newAch[0])
+      if (ach) { setAchievementToast(ach); setTimeout(() => setAchievementToast(null), 2500) }
+    }
     setKnown(k => k + 1)
     animateSwipe('right', goNext)
   }, [word, progress, goNext, animateSwipe])
@@ -442,6 +447,15 @@ export default function StudyMode({ categoryId, onBack }) {
             <div className="levelup-level">רמה {levelUpInfo.newLevel}</div>
             <div className="levelup-name">{levelUpInfo.name}</div>
             <button className="levelup-btn" onClick={() => setLevelUpInfo(null)}>המשך →</button>
+          </div>
+        </div>
+      )}
+      {achievementToast && (
+        <div className="achievement-toast">
+          <span>{achievementToast.emoji}</span>
+          <div>
+            <div className="ach-toast-title">🏅 הישג חדש!</div>
+            <div className="ach-toast-name">{achievementToast.title}</div>
           </div>
         </div>
       )}
