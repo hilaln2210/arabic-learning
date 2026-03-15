@@ -2,6 +2,8 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import { categories, getAllWords, getCategoryById } from '../data/words.js'
 import { speakArabic } from '../utils/tts.js'
 import { g } from '../utils/user.js'
+import { playCorrect, playWrong } from '../utils/sfx.js'
+import { addXP, XP_CORRECT } from '../utils/xp.js'
 
 function shuffle(arr) {
   const a = [...arr]
@@ -42,7 +44,13 @@ export default function QuizMode({ categoryId, onBack }) {
   const [score, setScore] = useState({ correct: 0, wrong: 0 })
   const [done, setDone] = useState(false)
   const [showFeedback, setShowFeedback] = useState(false)
+  const [hearts, setHearts] = useState(3)
+  const [xpFloat, setXpFloat] = useState(null)
+  const [sessionXP, setSessionXP] = useState(0)
+  const [gameOver, setGameOver] = useState(false)
+  const [lostHeartIndex, setLostHeartIndex] = useState(null)
   const autoAdvanceTimer = useRef(null)
+  const xpFloatTimer = useRef(null)
 
   const allWords = getAllWords()
 
@@ -55,7 +63,12 @@ export default function QuizMode({ categoryId, onBack }) {
     setSelected(null)
     setScore({ correct: 0, wrong: 0 })
     setDone(false)
+    setGameOver(false)
     setShowFeedback(false)
+    setHearts(3)
+    setSessionXP(0)
+    setXpFloat(null)
+    setLostHeartIndex(null)
   }, [])
 
   useEffect(() => {
@@ -64,10 +77,11 @@ export default function QuizMode({ categoryId, onBack }) {
     }
   }, [selectedCategoryId, buildQuiz])
 
-  // Cleanup auto-advance timer on unmount
+  // Cleanup timers on unmount
   useEffect(() => {
     return () => {
       if (autoAdvanceTimer.current) clearTimeout(autoAdvanceTimer.current)
+      if (xpFloatTimer.current) clearTimeout(xpFloatTimer.current)
     }
   }, [])
 
@@ -91,8 +105,32 @@ export default function QuizMode({ categoryId, onBack }) {
 
     if (isCorrect) {
       navigator.vibrate?.(40)
+      playCorrect()
+      const result = addXP(XP_CORRECT)
+      setSessionXP(prev => prev + XP_CORRECT)
+
+      // Show floating XP animation
+      if (xpFloatTimer.current) clearTimeout(xpFloatTimer.current)
+      setXpFloat({ id: Date.now(), text: `+${XP_CORRECT} ⭐` })
+      xpFloatTimer.current = setTimeout(() => setXpFloat(null), 800)
     } else {
       navigator.vibrate?.([20, 30, 20])
+      playWrong()
+      setHearts(h => {
+        const newHearts = h - 1
+        // Animate the heart being lost
+        setLostHeartIndex(newHearts)
+        setTimeout(() => setLostHeartIndex(null), 600)
+
+        if (newHearts === 0) {
+          // Game over after showing wrong feedback briefly
+          autoAdvanceTimer.current = setTimeout(() => {
+            setGameOver(true)
+            setDone(true)
+          }, 1000)
+        }
+        return newHearts
+      })
     }
 
     setSelected(choice)
@@ -102,18 +140,21 @@ export default function QuizMode({ categoryId, onBack }) {
       wrong: s.wrong + (isCorrect ? 0 : 1)
     }))
 
-    // Auto-advance after 1.5 seconds
-    autoAdvanceTimer.current = setTimeout(() => {
-      if (currentIndex < questions.length - 1) {
-        setCurrentIndex(i => i + 1)
-        setSelected(null)
-        setShowFeedback(false)
-      } else {
-        setDone(true)
-      }
-    }, 1500)
+    // Auto-advance after 1.5 seconds (only if not game over)
+    if (isCorrect || hearts > 1) {
+      autoAdvanceTimer.current = setTimeout(() => {
+        if (currentIndex < questions.length - 1) {
+          setCurrentIndex(i => i + 1)
+          setSelected(null)
+          setShowFeedback(false)
+        } else {
+          setDone(true)
+        }
+      }, 1500)
+    }
   }
 
+  // Category picker
   if (!selectedCategoryId && categoryId === null) {
     return (
       <div className="category-picker">
@@ -147,7 +188,63 @@ export default function QuizMode({ categoryId, onBack }) {
     )
   }
 
+  // Done / Game over screen
   if (done) {
+    // Game over (ran out of hearts)
+    if (gameOver) {
+      return (
+        <div className="quiz-screen">
+          <div className="quiz-header">
+            <div className="quiz-top-row">
+              <button className="back-btn" onClick={onBack}>←</button>
+              <span className="page-title">Game Over</span>
+            </div>
+          </div>
+          <div className="completion-screen animate-in game-over-screen">
+            <span className="completion-emoji">💔</span>
+            <div className="hearts-display hearts-display-done">
+              {Array.from({ length: 3 }).map((_, i) => (
+                <span key={i} className="heart heart-lost">❤️</span>
+              ))}
+            </div>
+            <div className="completion-title">נגמרו הלבבות</div>
+            <div className="completion-sub">
+              {score.correct > 0
+                ? `ענית נכון על ${score.correct} שאלות לפני הסוף`
+                : 'נסה שוב — אתה יכול!'}
+            </div>
+            {sessionXP > 0 && (
+              <div className="xp-earned-badge">
+                +{sessionXP} ⭐ XP הרווחת
+              </div>
+            )}
+            <div className="completion-stats">
+              <div className="comp-stat">
+                <span className="comp-stat-num green">{score.correct}</span>
+                <span className="comp-stat-label">נכון ✓</span>
+              </div>
+              <div className="comp-stat">
+                <span className="comp-stat-num red">{score.wrong}</span>
+                <span className="comp-stat-label">שגוי ✗</span>
+              </div>
+            </div>
+            <div className="completion-btns">
+              <button
+                className="btn-primary"
+                onClick={() => buildQuiz(selectedCategoryId)}
+              >
+                {g('נסי', 'נסה')} שוב 🔄
+              </button>
+              <button className="btn-secondary" onClick={onBack}>
+                חזרה לבית
+              </button>
+            </div>
+          </div>
+        </div>
+      )
+    }
+
+    // Normal completion screen
     const total = score.correct + score.wrong
     const pct = total > 0 ? Math.round((score.correct / total) * 100) : 0
     const isPerfect = pct === 100
@@ -178,6 +275,11 @@ export default function QuizMode({ categoryId, onBack }) {
           <span className="completion-emoji">{emoji}</span>
           <div className={`completion-title${isPerfect ? ' perfect-title' : ''}`}>{msg}</div>
           <div className="completion-sub">{pct}% תשובות נכונות</div>
+          {sessionXP > 0 && (
+            <div className="xp-earned-badge">
+              +{sessionXP} ⭐ XP הרווחת
+            </div>
+          )}
           <div className="completion-stats">
             <div className="comp-stat">
               <span className="comp-stat-num green">{score.correct}</span>
@@ -186,6 +288,10 @@ export default function QuizMode({ categoryId, onBack }) {
             <div className="comp-stat">
               <span className="comp-stat-num red">{score.wrong}</span>
               <span className="comp-stat-label">שגוי ✗</span>
+            </div>
+            <div className="comp-stat">
+              <span className="comp-stat-num" style={{ color: '#f59e0b' }}>{sessionXP}</span>
+              <span className="comp-stat-label">XP ⭐</span>
             </div>
           </div>
           <div className="completion-btns">
@@ -211,7 +317,14 @@ export default function QuizMode({ categoryId, onBack }) {
   const isCorrect = selected === q.correct
 
   return (
-    <div className="quiz-screen">
+    <div className="quiz-screen" style={{ position: 'relative' }}>
+      {/* Floating XP animation */}
+      {xpFloat && (
+        <div key={xpFloat.id} className="xp-float animate-xp">
+          +{XP_CORRECT} ⭐
+        </div>
+      )}
+
       <div className="quiz-header">
         <div className="quiz-top-row">
           <button className="back-btn" onClick={onBack}>←</button>
@@ -224,6 +337,19 @@ export default function QuizMode({ categoryId, onBack }) {
             <span className="score-red">{score.wrong}✗</span>
           </div>
         </div>
+
+        {/* Hearts display */}
+        <div className="hearts-display">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <span
+              key={i}
+              className={`heart ${i >= hearts ? 'heart-lost' : ''} ${i === lostHeartIndex ? 'heart-losing' : ''}`}
+            >
+              ❤️
+            </span>
+          ))}
+        </div>
+
         <div className="progress-bar-wrap">
           <div className="progress-bar-fill" style={{ width: `${pct}%` }} />
         </div>

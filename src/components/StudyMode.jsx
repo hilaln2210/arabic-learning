@@ -4,6 +4,18 @@ import { recordStudyToday } from '../utils/streak.js'
 import { updateSRS, getDueWords } from '../utils/srs.js'
 import { speakArabic } from '../utils/tts.js'
 import { g, isSoundEnabled, isAutoplayEnabled } from '../utils/user.js'
+import { addXP, XP_CORRECT } from '../utils/xp.js'
+import { playCorrect, playWrong } from '../utils/sfx.js'
+
+function recordDailyWord() {
+  try {
+    const today = new Date().toDateString()
+    const raw = localStorage.getItem('arabic_daily_progress')
+    const cur = raw ? JSON.parse(raw) : { date: today, count: 0 }
+    const count = cur.date === today ? cur.count + 1 : 1
+    localStorage.setItem('arabic_daily_progress', JSON.stringify({ date: today, count }))
+  } catch {}
+}
 
 function getProgress() {
   try {
@@ -189,7 +201,10 @@ export default function StudyMode({ categoryId, onBack }) {
   const markKnown = useCallback(() => {
     if (!word) return
     navigator.vibrate?.(30)
+    playCorrect()
     updateSRS(word.id, true)
+    addXP(XP_CORRECT)
+    recordDailyWord()
     const updated = { ...progress, [word.id]: 'known' }
     setProgress(updated)
     saveProgress(updated)
@@ -200,6 +215,7 @@ export default function StudyMode({ categoryId, onBack }) {
   const markDunno = useCallback(() => {
     if (!word) return
     navigator.vibrate?.([15, 15])
+    playWrong()
     updateSRS(word.id, false)
     const wordId = word.id
     const newCount = (dunnoCount[wordId] || 0) + 1
