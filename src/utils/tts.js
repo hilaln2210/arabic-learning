@@ -15,19 +15,27 @@ if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
 }
 
 function getArabicVoice() {
-  // Prefer exact ar-SA, then any Arabic voice
-  return voices.find(v => v.lang === 'ar-SA') ||
-         voices.find(v => v.lang.startsWith('ar')) ||
-         null
+  const arabic = voices.filter(v => v.lang.startsWith('ar'))
+  if (!arabic.length) return null
+
+  // Microsoft Arabic voices (MSA) add tanwin to isolated words: بيت → "baytun"
+  // Prefer Google voices or Egyptian dialect which pronounce correctly: "bayt"
+  return arabic.find(v => v.name.includes('Google') && v.lang === 'ar-EG') ||
+         arabic.find(v => v.name.includes('Google')) ||
+         arabic.find(v => v.lang === 'ar-EG') ||
+         arabic.find(v => !v.name.includes('Microsoft')) ||
+         arabic[0] // last resort — may add tanwin
 }
 
 function speakViaSpeechAPI(text) {
   const voice = getArabicVoice()
   if (!voice) return false
+  // If only Microsoft voice available (adds tanwin), prefer server TTS
+  if (voice.name.includes('Microsoft')) return false
   window.speechSynthesis.cancel()
   const utt = new SpeechSynthesisUtterance(text)
   utt.voice = voice
-  utt.lang = 'ar-SA'
+  utt.lang = voice.lang || 'ar'
   utt.rate = 0.9
   utt.pitch = 1
   window.speechSynthesis.speak(utt)
