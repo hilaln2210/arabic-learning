@@ -3,7 +3,9 @@ import { categories, getAllWords, getCategoryById } from '../data/words.js'
 import { speakArabic } from '../utils/tts.js'
 import { g } from '../utils/user.js'
 import { playCorrect, playWrong } from '../utils/sfx.js'
-import { addXP, XP_CORRECT } from '../utils/xp.js'
+import { addXP, XP_CORRECT, LEVEL_NAMES } from '../utils/xp.js'
+import { checkAndUnlock, getAchievementStats, incrementQuizCount } from '../utils/achievements.js'
+import { getStreak, getTotalStudyDays } from '../utils/streak.js'
 
 function shuffle(arr) {
   const a = [...arr]
@@ -49,6 +51,7 @@ export default function QuizMode({ categoryId, onBack }) {
   const [sessionXP, setSessionXP] = useState(0)
   const [gameOver, setGameOver] = useState(false)
   const [lostHeartIndex, setLostHeartIndex] = useState(null)
+  const [levelUpInfo, setLevelUpInfo] = useState(null)
   const autoAdvanceTimer = useRef(null)
   const xpFloatTimer = useRef(null)
 
@@ -85,6 +88,24 @@ export default function QuizMode({ categoryId, onBack }) {
     }
   }, [])
 
+  // Trigger achievements when quiz finishes
+  useEffect(() => {
+    if (!done || gameOver) return
+    const total = score.correct + score.wrong
+    const pct = total > 0 ? Math.round((score.correct / total) * 100) : 0
+    const isPerfect = pct === 100
+    incrementQuizCount(isPerfect)
+    const stats = getAchievementStats()
+    checkAndUnlock({
+      streak: getStreak(),
+      xp: (() => { try { return parseInt(localStorage.getItem('arabic_xp') || '0') } catch { return 0 } })(),
+      quizCount: stats.quizCount || 0,
+      perfectQuiz: stats.perfectQuiz || 0,
+      matchCount: stats.matchCount || 0,
+      totalDays: getTotalStudyDays()
+    })
+  }, [done, gameOver])
+
   const handleNext = useCallback(() => {
     if (autoAdvanceTimer.current) clearTimeout(autoAdvanceTimer.current)
     setCurrentIndex(i => {
@@ -107,6 +128,9 @@ export default function QuizMode({ categoryId, onBack }) {
       navigator.vibrate?.(40)
       playCorrect()
       const result = addXP(XP_CORRECT)
+      if (result.leveledUp) {
+        setLevelUpInfo({ newLevel: result.newLevel, name: LEVEL_NAMES[result.newLevel - 1] })
+      }
       setSessionXP(prev => prev + XP_CORRECT)
 
       // Show floating XP animation
@@ -318,6 +342,17 @@ export default function QuizMode({ categoryId, onBack }) {
 
   return (
     <div className="quiz-screen" style={{ position: 'relative' }}>
+      {levelUpInfo && (
+        <div className="levelup-overlay" onClick={() => setLevelUpInfo(null)}>
+          <div className="levelup-card" onClick={e => e.stopPropagation()}>
+            <div className="levelup-stars">⭐⭐⭐</div>
+            <div className="levelup-label">עלית רמה!</div>
+            <div className="levelup-level">רמה {levelUpInfo.newLevel}</div>
+            <div className="levelup-name">{levelUpInfo.name}</div>
+            <button className="levelup-btn" onClick={() => setLevelUpInfo(null)}>המשך →</button>
+          </div>
+        </div>
+      )}
       {/* Floating XP animation */}
       {xpFloat && (
         <div key={xpFloat.id} className="xp-float animate-xp">

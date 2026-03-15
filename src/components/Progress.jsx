@@ -2,6 +2,8 @@ import { useState, useMemo } from 'react'
 import { categories, getAllWords } from '../data/words.js'
 import { getStreak, getBestStreak, getTotalStudyDays } from '../utils/streak.js'
 import { g } from '../utils/user.js'
+import { getLevelInfo } from '../utils/xp.js'
+import { ACHIEVEMENTS, getAllUnlocked } from '../utils/achievements.js'
 
 function getProgress() {
   try {
@@ -12,28 +14,18 @@ function getProgress() {
   }
 }
 
-function getLevelInfo(known) {
-  if (known >= 46) return { label: g('מאסטרית', 'מאסטר'), next: null, nextAt: null }
-  if (known >= 26) return { label: g('מיומנת', 'מיומן'), next: g('מאסטרית', 'מאסטר'), nextAt: 46 }
-  if (known >= 11) return { label: g('מתקדמת', 'מתקדם'), next: g('מיומנת', 'מיומן'), nextAt: 26 }
-  return { label: g('מתחילה', 'מתחיל'), next: g('מתקדמת', 'מתקדם'), nextAt: 11 }
-}
-
 export default function Progress({ onBack }) {
   const [progress, setProgress] = useState(getProgress)
   const allWords = useMemo(() => getAllWords(), [])
   const streak = useMemo(() => getStreak(), [])
   const bestStreak = useMemo(() => getBestStreak(), [])
   const totalDays = useMemo(() => getTotalStudyDays(), [])
+  const levelInfo = useMemo(() => getLevelInfo(), [])
+  const unlocked = useMemo(() => getAllUnlocked(), [])
 
   const totalKnown = allWords.filter(w => progress[w.id] === 'known').length
   const totalLearning = allWords.filter(w => progress[w.id] === 'learning').length
   const totalPct = allWords.length > 0 ? Math.round((totalKnown / allWords.length) * 100) : 0
-
-  const levelInfo = getLevelInfo(totalKnown)
-  const levelPct = levelInfo.nextAt
-    ? Math.min(100, Math.round((totalKnown / levelInfo.nextAt) * 100))
-    : 100
 
   const handleReset = () => {
     if (window.confirm('למחוק את כל ההתקדמות?')) {
@@ -65,6 +57,23 @@ export default function Progress({ onBack }) {
         </div>
       </div>
 
+      {/* XP / Level card */}
+      <div className="progress-xp-card">
+        <div className="progress-xp-top">
+          <span className="xp-level-badge">Lv.{levelInfo.level}</span>
+          <span className="xp-level-name">{levelInfo.name}</span>
+          <span className="xp-total">⭐ {levelInfo.xp} XP</span>
+        </div>
+        <div className="progress-cat-bar">
+          <div className="progress-cat-fill" style={{ width: `${levelInfo.progress}%` }} />
+        </div>
+        {!levelInfo.isMax && (
+          <div className="progress-xp-sub">
+            עוד {levelInfo.nextLevelXP - levelInfo.xp} XP לרמה {levelInfo.level + 1}
+          </div>
+        )}
+      </div>
+
       <div className="progress-total-card">
         <div className="progress-total-num">{totalPct}%</div>
         <div className="progress-total-label">
@@ -75,19 +84,6 @@ export default function Progress({ onBack }) {
             {totalLearning} מילים עוד בתרגול
           </div>
         )}
-        <div style={{ marginTop: 14 }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-            <span className="level-badge">{levelInfo.label}</span>
-            {levelInfo.next && (
-              <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.5)' }}>
-                {totalKnown}/{levelInfo.nextAt} → {levelInfo.next}
-              </span>
-            )}
-          </div>
-          <div className="progress-cat-bar">
-            <div className="progress-cat-fill" style={{ width: `${levelPct}%` }} />
-          </div>
-        </div>
       </div>
 
       <div className="progress-categories">
@@ -107,6 +103,25 @@ export default function Progress({ onBack }) {
             </div>
           )
         })}
+      </div>
+
+      {/* Achievements section */}
+      <div className="achievements-section">
+        <div className="achievements-title">🏅 הישגים</div>
+        <div className="achievements-grid">
+          {ACHIEVEMENTS.map(ach => {
+            const isUnlocked = !!unlocked[ach.id]
+            return (
+              <div key={ach.id} className={`achievement-card ${isUnlocked ? 'unlocked' : 'locked'}`}>
+                <div className="achievement-emoji">{ach.emoji}</div>
+                <div className="achievement-title">{ach.title}</div>
+                <div className="achievement-desc">{ach.desc}</div>
+                {isUnlocked && <div className="achievement-check">✓</div>}
+              </div>
+            )
+          })}
+        </div>
+        <div className="achievements-count">{Object.keys(unlocked).length}/{ACHIEVEMENTS.length} הישגים</div>
       </div>
 
       <button className="reset-btn" onClick={handleReset}>

@@ -2,6 +2,8 @@ import { useState, useEffect, useCallback, useMemo } from 'react'
 import { getAllWords, getCategoryById, categories } from '../data/words.js'
 import { g } from '../utils/user.js'
 import { speakArabic } from '../utils/tts.js'
+import { incrementMatchCount, checkAndUnlock, getAchievementStats } from '../utils/achievements.js'
+import { getStreak, getTotalStudyDays } from '../utils/streak.js'
 
 function shuffle(arr) {
   const a = [...arr]
@@ -50,6 +52,20 @@ export default function MatchGame({ categoryId, onBack }) {
       buildRound(selectedCatId, words)
     }
   }, [selectedCatId, buildRound])
+
+  // Trigger achievements when match game ends
+  useEffect(() => {
+    if (!done) return
+    incrementMatchCount()
+    const stats = getAchievementStats()
+    checkAndUnlock({
+      streak: getStreak(),
+      xp: (() => { try { return parseInt(localStorage.getItem('arabic_xp') || '0') } catch { return 0 } })(),
+      quizCount: stats.quizCount || 0,
+      matchCount: stats.matchCount || 0,
+      totalDays: getTotalStudyDays()
+    })
+  }, [done])
 
   // Shuffle hebrew column once per pairs change (not on every render)
   const hebrewOrder = useMemo(() => shuffle([...pairs]), [pairs])

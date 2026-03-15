@@ -1,10 +1,11 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { categories, getAllWords, getCategoryById } from '../data/words.js'
-import { recordStudyToday } from '../utils/streak.js'
+import { recordStudyToday, getStreak, getTotalStudyDays } from '../utils/streak.js'
 import { updateSRS, getDueWords } from '../utils/srs.js'
 import { speakArabic } from '../utils/tts.js'
 import { g, isSoundEnabled, isAutoplayEnabled } from '../utils/user.js'
-import { addXP, XP_CORRECT } from '../utils/xp.js'
+import { addXP, XP_CORRECT, LEVEL_NAMES } from '../utils/xp.js'
+import { checkAndUnlock, getAchievementStats } from '../utils/achievements.js'
 import { playCorrect, playWrong } from '../utils/sfx.js'
 
 function recordDailyWord() {
@@ -134,6 +135,7 @@ export default function StudyMode({ categoryId, onBack }) {
   const [trickAlt, setTrickAlt] = useState({})
   const [missedIds, setMissedIds] = useState([]) // words marked dunno this session
   const [reviewWords, setReviewWords] = useState(null) // null = normal, array = review mode
+  const [levelUpInfo, setLevelUpInfo] = useState(null)
 
   const FUNNY_MESSAGES = [
     `נו באמת, זו כבר הפעם ה-{n}! 😅 החלפתי לך טריק חדש 👇`,
@@ -203,11 +205,17 @@ export default function StudyMode({ categoryId, onBack }) {
     navigator.vibrate?.(30)
     playCorrect()
     updateSRS(word.id, true)
-    addXP(XP_CORRECT)
+    const xpResult = addXP(XP_CORRECT)
+    if (xpResult.leveledUp) {
+      setLevelUpInfo({ newLevel: xpResult.newLevel, name: LEVEL_NAMES[xpResult.newLevel - 1] })
+    }
     recordDailyWord()
     const updated = { ...progress, [word.id]: 'known' }
     setProgress(updated)
     saveProgress(updated)
+    const totalKnown = Object.values(updated).filter(v => v === 'known').length
+    const stats = getAchievementStats()
+    checkAndUnlock({ totalKnown, streak: getStreak(), xp: xpResult.newXP, quizCount: stats.quizCount || 0, perfectQuiz: stats.perfectQuiz || 0, matchCount: stats.matchCount || 0, totalDays: getTotalStudyDays() })
     setKnown(k => k + 1)
     animateSwipe('right', goNext)
   }, [word, progress, goNext, animateSwipe])
@@ -426,6 +434,17 @@ export default function StudyMode({ categoryId, onBack }) {
 
   return (
     <div className="study-screen">
+      {levelUpInfo && (
+        <div className="levelup-overlay" onClick={() => setLevelUpInfo(null)}>
+          <div className="levelup-card" onClick={e => e.stopPropagation()}>
+            <div className="levelup-stars">⭐⭐⭐</div>
+            <div className="levelup-label">עלית רמה!</div>
+            <div className="levelup-level">רמה {levelUpInfo.newLevel}</div>
+            <div className="levelup-name">{levelUpInfo.name}</div>
+            <button className="levelup-btn" onClick={() => setLevelUpInfo(null)}>המשך →</button>
+          </div>
+        </div>
+      )}
       <div className="study-header">
         <div className="study-top-row">
           <button className="back-btn" onClick={onBack}>←</button>
