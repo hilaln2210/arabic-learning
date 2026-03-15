@@ -232,7 +232,7 @@ export default function QuizMode({ categoryId, onBack }) {
       <div className="quiz-question-card animate-in" key={currentIndex}>
         <div className="quiz-arabic">{q.word.arabic}</div>
         <div className="quiz-translit">{q.word.transliteration}</div>
-        <button className="tts-btn-quiz" onClick={() => speakArabic(q.word.arabic)}>
+        <button className="tts-btn-quiz" onClick={() => speakArabic(q.word.arabic, q.word.id)}>
           🔊
         </button>
       </div>

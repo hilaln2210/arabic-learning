@@ -1,6 +1,5 @@
-// Arabic TTS — always uses Google Translate TTS via server proxy
-// Consistent pronunciation across all devices (no tanwin, no dialect variance)
-// iOS AudioContext is unlocked synchronously inside the user gesture
+// Arabic TTS — static pre-generated MP3 files (ar-EG-SalmaNeural, no tanwin)
+// Falls back to Netlify function (Google Translate TTS) if file missing
 
 let audioCtx = null
 let currentSource = null
@@ -10,7 +9,7 @@ function getAudioContext() {
   return audioCtx
 }
 
-// Call synchronously inside user gesture to unlock iOS AudioContext
+// Must be called synchronously inside a user gesture to unlock iOS AudioContext
 function unlockContextSync() {
   try {
     const ctx = getAudioContext()
@@ -25,8 +24,7 @@ function unlockContextSync() {
   } catch {}
 }
 
-async function speakViaServer(text) {
-  const url = `/.netlify/functions/tts?text=${encodeURIComponent(text)}`
+async function playMp3Url(url) {
   const res = await fetch(url)
   if (!res.ok) throw new Error(`HTTP ${res.status}`)
   const arrayBuf = await res.arrayBuffer()
@@ -42,12 +40,23 @@ async function speakViaServer(text) {
   currentSource = source
 }
 
-export async function speakArabic(text) {
+// wordId: optional — uses pre-generated /audio/{wordId}.mp3 (fastest, most consistent)
+// text:   fallback to Netlify function (Google Translate TTS)
+export async function speakArabic(text, wordId) {
   if (!text) return
-  // Unlock AudioContext synchronously (must be inside user gesture, before any await)
   unlockContextSync()
+
+  // 1. Pre-generated static file — Egyptian Arabic, no tanwin, works offline
+  if (wordId) {
+    try {
+      await playMp3Url(`/audio/${wordId}.mp3`)
+      return
+    } catch {}
+  }
+
+  // 2. Netlify function fallback (Google Translate TTS + period to prevent tanwin)
   try {
-    await speakViaServer(text)
+    await playMp3Url(`/.netlify/functions/tts?text=${encodeURIComponent(text)}`)
   } catch (e) {
     console.warn('TTS error:', e.message)
   }
@@ -57,5 +66,4 @@ export function unlockAudio() {
   try { unlockContextSync() } catch {}
 }
 
-// kept for backwards compat
 export function preloadVoices() {}

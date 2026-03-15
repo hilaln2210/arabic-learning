@@ -223,7 +223,7 @@ export default function StudyMode({ categoryId, onBack }) {
   // 🔊 Auto-play when card flips to back
   useEffect(() => {
     if (isFlipped && word && isSoundEnabled() && isAutoplayEnabled()) {
-      speakArabic(word.arabic)
+      speakArabic(word.arabic, word.id)
     }
   }, [isFlipped]) // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -239,7 +239,7 @@ export default function StudyMode({ categoryId, onBack }) {
       } else if (e.code === 'ArrowLeft' && isFlipped) {
         markDunno()
       } else if ((e.key === 't' || e.key === 'T') && word && isSoundEnabled()) {
-        speakArabic(word.arabic)
+        speakArabic(word.arabic, word.id)
       }
     }
     window.addEventListener('keydown', handleKey)
@@ -434,7 +434,7 @@ export default function StudyMode({ categoryId, onBack }) {
             <div className="arabic-word">{word.arabic}</div>
             <div className="transliteration">{word.transliteration}</div>
             <div className="tts-buttons" onClick={e => e.stopPropagation()}>
-              <button className="tts-btn" onClick={(e) => { e.stopPropagation(); if (isSoundEnabled()) speakArabic(word.arabic) }}>
+              <button className="tts-btn" onClick={(e) => { e.stopPropagation(); if (isSoundEnabled()) speakArabic(word.arabic, word.id) }}>
                 🔊 {g('שמעי', 'שמע')}
               </button>
             </div>
@@ -448,7 +448,7 @@ export default function StudyMode({ categoryId, onBack }) {
           <div className={`flashcard-face flashcard-back ${backClass}`}>
             <div className="arabic-small">{word.arabic}</div>
             <div className="tts-buttons" onClick={e => e.stopPropagation()}>
-              <button className="tts-btn" onClick={(e) => { e.stopPropagation(); if (isSoundEnabled()) speakArabic(word.arabic) }}>
+              <button className="tts-btn" onClick={(e) => { e.stopPropagation(); if (isSoundEnabled()) speakArabic(word.arabic, word.id) }}>
                 🔊 {g('שמעי', 'שמע')}
               </button>
             </div>
