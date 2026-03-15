@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react'
 import { categories, getAllWords } from '../data/words.js'
-import { getStreak } from '../utils/streak.js'
+import { getStreak, getBestStreak, getTotalStudyDays } from '../utils/streak.js'
+import { g } from '../utils/user.js'
 
 function getProgress() {
   try {
@@ -11,25 +12,25 @@ function getProgress() {
   }
 }
 
-function getLevelLabel(known) {
-  if (known >= 46) return { label: 'מאסטר', next: null, nextAt: null }
-  if (known >= 26) return { label: 'מיומנת', next: 'מאסטר', nextAt: 46 }
-  if (known >= 11) return { label: 'מתקדמת', next: 'מיומנת', nextAt: 26 }
-  return { label: 'מתחילה', next: 'מתקדמת', nextAt: 11 }
+function getLevelInfo(known) {
+  if (known >= 46) return { label: g('מאסטרית', 'מאסטר'), next: null, nextAt: null }
+  if (known >= 26) return { label: g('מיומנת', 'מיומן'), next: g('מאסטרית', 'מאסטר'), nextAt: 46 }
+  if (known >= 11) return { label: g('מתקדמת', 'מתקדם'), next: g('מיומנת', 'מיומן'), nextAt: 26 }
+  return { label: g('מתחילה', 'מתחיל'), next: g('מתקדמת', 'מתקדם'), nextAt: 11 }
 }
 
 export default function Progress({ onBack }) {
   const [progress, setProgress] = useState(getProgress)
   const allWords = useMemo(() => getAllWords(), [])
   const streak = useMemo(() => getStreak(), [])
+  const bestStreak = useMemo(() => getBestStreak(), [])
+  const totalDays = useMemo(() => getTotalStudyDays(), [])
 
   const totalKnown = allWords.filter(w => progress[w.id] === 'known').length
   const totalLearning = allWords.filter(w => progress[w.id] === 'learning').length
-  const totalPct = allWords.length > 0
-    ? Math.round((totalKnown / allWords.length) * 100)
-    : 0
+  const totalPct = allWords.length > 0 ? Math.round((totalKnown / allWords.length) * 100) : 0
 
-  const levelInfo = getLevelLabel(totalKnown)
+  const levelInfo = getLevelInfo(totalKnown)
   const levelPct = levelInfo.nextAt
     ? Math.min(100, Math.round((totalKnown / levelInfo.nextAt) * 100))
     : 100
@@ -45,14 +46,24 @@ export default function Progress({ onBack }) {
     <div className="progress-screen">
       <div className="progress-header">
         <div className="progress-title">📊 ההתקדמות שלי</div>
-        <div className="progress-subtitle">מה יודעת, מה עוד צריך ללמוד</div>
+        <div className="progress-subtitle">מה {g('יודעת', 'יודע')}, מה עוד צריך ללמוד</div>
       </div>
 
-      {streak > 0 && (
-        <div className="streak-badge" style={{ display: 'flex', marginBottom: 16 }}>
-          🔥 {streak} ימים ברצף
+      {/* Streak stats row */}
+      <div className="progress-streak-row">
+        <div className="progress-streak-card">
+          <span className="progress-streak-num">🔥 {streak}</span>
+          <span className="progress-streak-label">ימים ברצף</span>
         </div>
-      )}
+        <div className="progress-streak-card">
+          <span className="progress-streak-num">🏆 {bestStreak}</span>
+          <span className="progress-streak-label">שיא אישי</span>
+        </div>
+        <div className="progress-streak-card">
+          <span className="progress-streak-num">📆 {totalDays}</span>
+          <span className="progress-streak-label">ימי לימוד</span>
+        </div>
+      </div>
 
       <div className="progress-total-card">
         <div className="progress-total-num">{totalPct}%</div>
@@ -91,10 +102,7 @@ export default function Progress({ onBack }) {
                 <span className="progress-cat-count">{known}/{cat.words.length}</span>
               </div>
               <div className="progress-cat-bar">
-                <div
-                  className="progress-cat-fill"
-                  style={{ width: `${pct}%` }}
-                />
+                <div className="progress-cat-fill" style={{ width: `${pct}%` }} />
               </div>
             </div>
           )
@@ -102,7 +110,7 @@ export default function Progress({ onBack }) {
       </div>
 
       <button className="reset-btn" onClick={handleReset}>
-        🗑 אפסי את כל ההתקדמות
+        🗑 {g('אפסי', 'אפס')} את כל ההתקדמות
       </button>
     </div>
   )

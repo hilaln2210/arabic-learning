@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { categories, getAllWords, getCategoryById } from '../data/words.js'
 import { recordStudyToday } from '../utils/streak.js'
+import { updateSRS, getDueWords } from '../utils/srs.js'
 import { speakArabic } from '../utils/tts.js'
 import { g } from '../utils/user.js'
 
@@ -116,10 +117,11 @@ export default function StudyMode({ categoryId, onBack }) {
   const [dunno, setDunno] = useState(0)
   const [done, setDone] = useState(false)
   const [swipeAnim, setSwipeAnim] = useState(null)
-  const [dunnoCount, setDunnoCount] = useState({}) // { [wordId]: count }
+  const [dunnoCount, setDunnoCount] = useState({})
   const [funnyMsg, setFunnyMsg] = useState(null)
-  const [trickAlt, setTrickAlt] = useState({}) // { [wordId]: true } = showing trick2
-
+  const [trickAlt, setTrickAlt] = useState({})
+  const [missedIds, setMissedIds] = useState([]) // words marked dunno this session
+  const [reviewWords, setReviewWords] = useState(null) // null = normal, array = review mode
 
   const FUNNY_MESSAGES = [
     `נו באמת, זו כבר הפעם ה-{n}! 😅 החלפתי לך טריק חדש 👇`,
@@ -143,23 +145,28 @@ export default function StudyMode({ categoryId, onBack }) {
     recordStudyToday()
   }, [])
 
-  const words = selectedCategoryId
-    ? (getCategoryById(selectedCategoryId)?.words || [])
-    : getAllWords()
+  // Build the active word list
+  const activeWords = reviewWords || (() => {
+    if (selectedCategoryId === '__srs__') return getDueWords(getAllWords())
+    if (selectedCategoryId === '__all__' || !selectedCategoryId) return getAllWords()
+    return getCategoryById(selectedCategoryId)?.words || []
+  })()
 
-  const category = selectedCategoryId ? getCategoryById(selectedCategoryId) : null
+  const category = selectedCategoryId && selectedCategoryId !== '__all__' && selectedCategoryId !== '__srs__'
+    ? getCategoryById(selectedCategoryId)
+    : null
 
-  const currentWord = words[currentIndex]
+  const word = activeWords[currentIndex]
 
   const goNext = useCallback(() => {
     setFunnyMsg(null)
-    if (currentIndex < words.length - 1) {
+    if (currentIndex < activeWords.length - 1) {
       setCurrentIndex(i => i + 1)
       setIsFlipped(false)
     } else {
       setDone(true)
     }
-  }, [currentIndex, words.length])
+  }, [currentIndex, activeWords.length])
 
   const goPrev = useCallback(() => {
     if (currentIndex > 0) {
@@ -168,47 +175,69 @@ export default function StudyMode({ categoryId, onBack }) {
     }
   }, [currentIndex])
 
-  const markKnown = () => {
-    navigator.vibrate?.(30)
-    const updated = { ...progress, [currentWord.id]: 'known' }
-    setProgress(updated)
-    saveProgress(updated)
-    setKnown(k => k + 1)
-    animateSwipe('right', goNext)
-  }
-
-  const markDunno = () => {
-    navigator.vibrate?.([15, 15])
-    const wordId = currentWord.id
-    const newCount = (dunnoCount[wordId] || 0) + 1
-    setDunnoCount(prev => ({ ...prev, [wordId]: newCount }))
-
-    if (newCount >= 2) {
-      const msgs = FUNNY_MESSAGES
-      const template = msgs[Math.floor(Math.random() * msgs.length)]
-      const msg = template
-        .replace(/{n}/g, newCount)
-        .replace(/{arabic}/g, currentWord.arabic)
-        .replace(/{transliteration}/g, currentWord.transliteration)
-      setFunnyMsg(msg)
-      // Auto-hide after 3 seconds
-      setTimeout(() => setFunnyMsg(null), 3000)
-    }
-
-    const updated = { ...progress, [currentWord.id]: 'learning' }
-    setProgress(updated)
-    saveProgress(updated)
-    setDunno(d => d + 1)
-    animateSwipe('left', goNext)
-  }
-
-  const animateSwipe = (dir, cb) => {
+  const animateSwipe = useCallback((dir, cb) => {
     setSwipeAnim(dir)
     setTimeout(() => {
       setSwipeAnim(null)
       cb()
     }, 220)
-  }
+  }, [])
+
+  const markKnown = useCallback(() => {
+    if (!word) return
+    navigator.vibrate?.(30)
+    updateSRS(word.id, true)
+    const updated = { ...progress, [word.id]: 'known' }
+    setProgress(updated)
+    saveProgress(updated)
+    setKnown(k => k + 1)
+    animateSwipe('right', goNext)
+  }, [word, progress, goNext, animateSwipe])
+
+  const markDunno = useCallback(() => {
+    if (!word) return
+    navigator.vibrate?.([15, 15])
+    updateSRS(word.id, false)
+    const wordId = word.id
+    const newCount = (dunnoCount[wordId] || 0) + 1
+    setDunnoCount(prev => ({ ...prev, [wordId]: newCount }))
+    setMissedIds(prev => prev.includes(wordId) ? prev : [...prev, wordId])
+
+    if (newCount >= 2) {
+      const template = FUNNY_MESSAGES[Math.floor(Math.random() * FUNNY_MESSAGES.length)]
+      const msg = template
+        .replace(/{n}/g, newCount)
+        .replace(/{arabic}/g, word.arabic)
+        .replace(/{transliteration}/g, word.transliteration)
+      setFunnyMsg(msg)
+      setTimeout(() => setFunnyMsg(null), 3000)
+    }
+
+    const updated = { ...progress, [word.id]: 'learning' }
+    setProgress(updated)
+    saveProgress(updated)
+    setDunno(d => d + 1)
+    animateSwipe('left', goNext)
+  }, [word, dunnoCount, progress, goNext, animateSwipe])
+
+  // ⌨️ Keyboard shortcuts
+  useEffect(() => {
+    const handleKey = (e) => {
+      if (done) return
+      if (['Space', 'ArrowLeft', 'ArrowRight'].includes(e.code)) e.preventDefault()
+      if (e.code === 'Space') {
+        setIsFlipped(f => !f)
+      } else if (e.code === 'ArrowRight' && isFlipped) {
+        markKnown()
+      } else if (e.code === 'ArrowLeft' && isFlipped) {
+        markDunno()
+      } else if ((e.key === 't' || e.key === 'T') && word) {
+        speakArabic(word.arabic)
+      }
+    }
+    window.addEventListener('keydown', handleKey)
+    return () => window.removeEventListener('keydown', handleKey)
+  }, [isFlipped, done, word, markKnown, markDunno])
 
   // Touch/swipe handlers
   const handleTouchStart = (e) => {
@@ -223,42 +252,27 @@ export default function StudyMode({ categoryId, onBack }) {
     touchStartX.current = null
     touchStartY.current = null
 
-    if (Math.abs(dy) > Math.abs(dx)) return // vertical scroll, ignore
+    if (Math.abs(dy) > Math.abs(dx)) return
 
     if (!isFlipped) {
-      // Flip on horizontal swipe if not flipped
-      if (Math.abs(dx) > 50) {
-        setIsFlipped(true)
-      }
+      if (Math.abs(dx) > 50) setIsFlipped(true)
       return
     }
 
     if (Math.abs(dx) > 50) {
-      if (dx > 0) {
-        // swipe right = know
-        markKnown()
-      } else {
-        // swipe left = dunno
-        markDunno()
-      }
+      if (dx > 0) markKnown()
+      else markDunno()
     }
   }
 
-  const handleCardTap = () => {
-    setIsFlipped(f => !f)
-  }
-
+  // Category picker
   if (!selectedCategoryId && categoryId === null) {
-    // Show category picker
     return (
       <div className="category-picker">
-        <div className="picker-title">📖 בחרי קטגוריה</div>
-        <div className="picker-sub">או למדי את כל המילים ביחד</div>
+        <div className="picker-title">📖 {g('בחרי', 'בחר')} קטגוריה</div>
+        <div className="picker-sub">או {g('למדי', 'למד')} את כל המילים ביחד</div>
         <div className="picker-list">
-          <div
-            className="picker-item"
-            onClick={() => setSelectedCategoryId('__all__')}
-          >
+          <div className="picker-item" onClick={() => setSelectedCategoryId('__all__')}>
             <span className="picker-emoji">🌍</span>
             <div className="picker-info">
               <div className="picker-name">כל המילים</div>
@@ -267,11 +281,7 @@ export default function StudyMode({ categoryId, onBack }) {
             <span className="picker-arrow">←</span>
           </div>
           {categories.map(cat => (
-            <div
-              key={cat.id}
-              className="picker-item"
-              onClick={() => setSelectedCategoryId(cat.id)}
-            >
+            <div key={cat.id} className="picker-item" onClick={() => setSelectedCategoryId(cat.id)}>
               <span className="picker-emoji">{cat.emoji}</span>
               <div className="picker-info">
                 <div className="picker-name">{cat.name}</div>
@@ -285,24 +295,57 @@ export default function StudyMode({ categoryId, onBack }) {
     )
   }
 
-  // Normalize __all__ to show all words
-  const displayWords = (selectedCategoryId === '__all__' || !selectedCategoryId)
-    ? getAllWords()
-    : words
-
+  // Session summary / done screen
   if (done) {
+    const missed = activeWords.filter(w => missedIds.includes(w.id))
+    const isReviewMode = !!reviewWords
+    const accuracy = activeWords.length > 0
+      ? Math.round((known / (known + dunno)) * 100) || 0
+      : 0
+
+    const startReviewMistakes = () => {
+      setReviewWords(missed)
+      setCurrentIndex(0)
+      setIsFlipped(false)
+      setDone(false)
+      setKnown(0)
+      setDunno(0)
+      setMissedIds([])
+      setFunnyMsg(null)
+    }
+
+    const restartSame = () => {
+      setReviewWords(null)
+      setCurrentIndex(0)
+      setIsFlipped(false)
+      setDone(false)
+      setKnown(0)
+      setDunno(0)
+      setMissedIds([])
+      setFunnyMsg(null)
+    }
+
     return (
       <div className="study-screen">
         <div className="study-header">
           <div className="study-top-row">
             <button className="back-btn" onClick={onBack}>←</button>
-            <span className="page-title">סיימת! 🎉</span>
+            <span className="page-title">
+              {isReviewMode ? '🔁 חזרה על טעויות' : 'סיימת! 🎉'}
+            </span>
           </div>
         </div>
         <div className="completion-screen animate-in">
-          <span className="completion-emoji">🏆</span>
-          <div className="completion-title">כל הכבוד!</div>
-          <div className="completion-sub">{g('סיימת', 'סיימת')} את הקטגוריה</div>
+          <span className="completion-emoji">{accuracy >= 80 ? '🏆' : accuracy >= 50 ? '👍' : '💪'}</span>
+          <div className="completion-title">
+            {accuracy >= 80 ? 'כל הכבוד!' : accuracy >= 50 ? 'יפה מאוד!' : 'ממשיכים להתאמן!'}
+          </div>
+
+          <div className="session-accuracy-ring">
+            <span className="session-accuracy-num">{accuracy}%</span>
+            <span className="session-accuracy-label">דיוק</span>
+          </div>
+
           <div className="completion-stats">
             <div className="comp-stat">
               <span className="comp-stat-num green">{known}</span>
@@ -312,19 +355,32 @@ export default function StudyMode({ categoryId, onBack }) {
               <span className="comp-stat-num red">{dunno}</span>
               <span className="comp-stat-label">לתרגול ✗</span>
             </div>
+            <div className="comp-stat">
+              <span className="comp-stat-num">{activeWords.length}</span>
+              <span className="comp-stat-label">סה"כ</span>
+            </div>
           </div>
+
+          {missed.length > 0 && (
+            <div className="missed-words-section">
+              <div className="missed-words-title">מילים לחזרה:</div>
+              <div className="missed-words-list">
+                {missed.slice(0, 8).map(w => (
+                  <span key={w.id} className="missed-word-chip">{w.arabic} · {w.hebrew}</span>
+                ))}
+                {missed.length > 8 && <span className="missed-word-chip">+{missed.length - 8}</span>}
+              </div>
+            </div>
+          )}
+
           <div className="completion-btns">
-            <button
-              className="btn-primary"
-              onClick={() => {
-                setCurrentIndex(0)
-                setIsFlipped(false)
-                setDone(false)
-                setKnown(0)
-                setDunno(0)
-              }}
-            >
-              חזרי על הקטגוריה שוב
+            {missed.length > 0 && (
+              <button className="btn-primary btn-review-mistakes" onClick={startReviewMistakes}>
+                🔁 {g('תרגלי', 'תרגל')} רק את {missed.length} הטעויות
+              </button>
+            )}
+            <button className="btn-secondary" onClick={restartSame}>
+              {isReviewMode ? 'שוב מההתחלה' : g('חזרי', 'חזור')} על {isReviewMode ? 'הטעויות' : 'הקטגוריה'}
             </button>
             <button className="btn-secondary" onClick={onBack}>
               חזרה לבית
@@ -335,12 +391,12 @@ export default function StudyMode({ categoryId, onBack }) {
     )
   }
 
-  const activeWords = displayWords
-  const word = activeWords[currentIndex]
   if (!word) return null
 
-  const pct = Math.round(((currentIndex) / activeWords.length) * 100)
+  const pct = Math.round((currentIndex / activeWords.length) * 100)
   const backClass = CAT_BACK_CLASS[category?.id] || ''
+  const isSRSMode = selectedCategoryId === '__srs__'
+  const isReviewMode = !!reviewWords
 
   return (
     <div className="study-screen">
@@ -348,7 +404,9 @@ export default function StudyMode({ categoryId, onBack }) {
         <div className="study-top-row">
           <button className="back-btn" onClick={onBack}>←</button>
           <span className="page-title">
-            {category ? `${category.emoji} ${category.name}` : '🌍 כל המילים'}
+            {isReviewMode ? '🔁 חזרה על טעויות' :
+              isSRSMode ? '📅 חזרה יומית' :
+              category ? `${category.emoji} ${category.name}` : '🌍 כל המילים'}
           </span>
           <span className="study-counter">{currentIndex + 1}/{activeWords.length}</span>
         </div>
@@ -361,7 +419,7 @@ export default function StudyMode({ categoryId, onBack }) {
         className={`flashcard-scene${swipeAnim === 'left' ? ' swipe-left' : swipeAnim === 'right' ? ' swipe-right' : ''}`}
         onTouchStart={handleTouchStart}
         onTouchEnd={handleTouchEnd}
-        onClick={handleCardTap}
+        onClick={() => setIsFlipped(f => !f)}
       >
         <div className={`flashcard${isFlipped ? ' flipped' : ''}`}>
           {/* Front */}
@@ -370,12 +428,12 @@ export default function StudyMode({ categoryId, onBack }) {
             <div className="transliteration">{word.transliteration}</div>
             <div className="tts-buttons" onClick={e => e.stopPropagation()}>
               <button className="tts-btn" onClick={(e) => { e.stopPropagation(); speakArabic(word.arabic) }}>
-                🔊 שמעי
+                🔊 {g('שמעי', 'שמע')}
               </button>
             </div>
             <div className="tap-hint">
               <span>👆</span>
-              <span>הקישי להפוך</span>
+              <span>{g('הקישי', 'הקש')} להפוך</span>
             </div>
           </div>
 
@@ -384,7 +442,7 @@ export default function StudyMode({ categoryId, onBack }) {
             <div className="arabic-small">{word.arabic}</div>
             <div className="tts-buttons" onClick={e => e.stopPropagation()}>
               <button className="tts-btn" onClick={(e) => { e.stopPropagation(); speakArabic(word.arabic) }}>
-                🔊 שמעי
+                🔊 {g('שמעי', 'שמע')}
               </button>
             </div>
             <div className="hebrew-translation">{word.hebrew}</div>
@@ -419,9 +477,7 @@ export default function StudyMode({ categoryId, onBack }) {
       </div>
 
       {funnyMsg && (
-        <div className="funny-toast animate-in">
-          {funnyMsg}
-        </div>
+        <div className="funny-toast animate-in">{funnyMsg}</div>
       )}
 
       {isFlipped && (
@@ -430,21 +486,15 @@ export default function StudyMode({ categoryId, onBack }) {
             עוד צריך ✗
           </button>
           <button className="btn-know" onClick={markKnown}>
-            כבר יודעת ✓
+            {g('כבר יודעת', 'כבר יודע')} ✓
           </button>
         </div>
       )}
 
       <div className="study-nav-row">
-        <button
-          className="nav-arrow-btn"
-          onClick={goPrev}
-          disabled={currentIndex === 0}
-        >
-          →
-        </button>
-        <span style={{ fontSize: 13, color: 'rgba(255,255,255,0.4)', textAlign: 'center' }}>
-          {isFlipped ? 'החלקי ← ✗  ✓ →' : 'הקישי לפליפ'}
+        <button className="nav-arrow-btn" onClick={goPrev} disabled={currentIndex === 0}>→</button>
+        <span className="study-nav-hint">
+          {isFlipped ? 'החלקי ← ✗  ✓ →' : g('הקישי', 'הקש') + ' לפליפ'}
         </span>
         <button
           className="nav-arrow-btn"
@@ -453,6 +503,14 @@ export default function StudyMode({ categoryId, onBack }) {
         >
           ←
         </button>
+      </div>
+
+      {/* Desktop keyboard hint — shown on non-touch only */}
+      <div className="keyboard-hint">
+        <span>⌨️ Space = הפוך</span>
+        <span>→ = יודע</span>
+        <span>← = לא יודע</span>
+        <span>T = 🔊</span>
       </div>
     </div>
   )

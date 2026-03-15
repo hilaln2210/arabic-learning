@@ -1,6 +1,7 @@
 import { useMemo } from 'react'
 import { categories, getAllWords } from '../data/words.js'
-import { getStreak, getWordOfDay } from '../utils/streak.js'
+import { getStreak, getBestStreak, getTotalStudyDays, getWordOfDay } from '../utils/streak.js'
+import { getDueCount } from '../utils/srs.js'
 import { getUsername, g } from '../utils/user.js'
 
 function getProgress() {
@@ -111,7 +112,10 @@ export default function Home({ onStartStudy, onStartQuiz }) {
   const progress = useMemo(() => getProgress(), [])
   const allWords = useMemo(() => getAllWords(), [])
   const streak = useMemo(() => getStreak(), [])
+  const bestStreak = useMemo(() => getBestStreak(), [])
+  const totalDays = useMemo(() => getTotalStudyDays(), [])
   const wod = useMemo(() => getWordOfDay(allWords), [allWords])
+  const dueCount = useMemo(() => getDueCount(allWords), [allWords])
 
   const totalKnown = useMemo(() => {
     return allWords.filter(w => progress[w.id] === 'known').length
@@ -125,14 +129,9 @@ export default function Home({ onStartStudy, onStartQuiz }) {
   const handleShare = async () => {
     const text = `למדתי ${totalKnown} מילים בערבית עם טריקים! 🧠🇵🇸\nהרמה שלי: ${levelLabel}`
     if (navigator.share) {
-      try {
-        await navigator.share({ title: 'ערבית עם טריקים', text })
-      } catch {}
+      try { await navigator.share({ title: 'ערבית עם טריקים', text }) } catch {}
     } else {
-      try {
-        await navigator.clipboard.writeText(text)
-        alert('הועתק ללוח!')
-      } catch {}
+      try { await navigator.clipboard.writeText(text); alert('הועתק ללוח!') } catch {}
     }
   }
 
@@ -149,6 +148,18 @@ export default function Home({ onStartStudy, onStartQuiz }) {
         )}
       </div>
 
+      {/* SRS Daily Review Banner */}
+      {dueCount > 0 && (
+        <button className="srs-review-banner" onClick={() => onStartStudy('__srs__')}>
+          <span className="srs-review-icon">📅</span>
+          <div className="srs-review-text">
+            <span className="srs-review-count">{dueCount} מילים להחזרה היום</span>
+            <span className="srs-review-sub">חזרי על מה שנקבע להיום לפי מרווחי חזרה</span>
+          </div>
+          <span className="srs-review-arrow">←</span>
+        </button>
+      )}
+
       {/* Word of the Day */}
       <div className="wod-card">
         <div className="wod-label">מילת היום</div>
@@ -161,11 +172,21 @@ export default function Home({ onStartStudy, onStartQuiz }) {
       <div className="home-stats-row">
         <div className="stat-chip">
           <span className="stat-num">{totalKnown}</span>
-          <span className="stat-label">מילים ש{g('יודעת', 'יודע')}</span>
+          <span className="stat-label">מילים {g('ידועות', 'ידועים')}</span>
         </div>
         <div className="stat-chip">
           <span className="stat-num">{streak}</span>
-          <span className="stat-label">🔥 ימים</span>
+          <span className="stat-label">🔥 ברצף</span>
+        </div>
+        {bestStreak > streak && (
+          <div className="stat-chip">
+            <span className="stat-num">{bestStreak}</span>
+            <span className="stat-label">🏆 שיא</span>
+          </div>
+        )}
+        <div className="stat-chip">
+          <span className="stat-num">{totalDays}</span>
+          <span className="stat-label">📆 ימי לימוד</span>
         </div>
         <div className="stat-chip">
           <span className="stat-num level-badge-inline">{levelLabel}</span>
@@ -188,10 +209,7 @@ export default function Home({ onStartStudy, onStartQuiz }) {
               <span className="category-emoji">{cat.emoji}</span>
               <div className="category-name">{cat.name}</div>
               <div className="category-progress-bar">
-                <div
-                  className="category-progress-fill"
-                  style={{ width: `${pct}%` }}
-                />
+                <div className="category-progress-fill" style={{ width: `${pct}%` }} />
               </div>
               <div className="category-progress-text">{known}/{cat.words.length} {g('ידועות', 'ידועים')}</div>
             </div>
@@ -200,19 +218,13 @@ export default function Home({ onStartStudy, onStartQuiz }) {
       </div>
 
       <div className="home-cta">
-        <button
-          className="btn-primary"
-          onClick={() => onStartStudy(null)}
-        >
+        <button className="btn-primary" onClick={() => onStartStudy(null)}>
           <span>📖</span>
           <span>{g('התחילי', 'התחל')} ללמוד</span>
         </button>
       </div>
       <div style={{ marginTop: 10 }}>
-        <button
-          className="btn-secondary"
-          onClick={() => onStartQuiz(null)}
-        >
+        <button className="btn-secondary" onClick={() => onStartQuiz(null)}>
           <span>🎯</span>
           <span>חידון מהיר</span>
         </button>
