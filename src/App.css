@@ -1787,3 +1787,194 @@ body {
   color: var(--white-60);
   text-align: center;
 }
+
+/* ===== SETTINGS SCREEN ===== */
+.settings-screen {
+  padding: 20px 16px;
+  padding-top: calc(20px + env(safe-area-inset-top));
+  padding-bottom: calc(100px + env(safe-area-inset-bottom));
+  max-width: 480px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+.settings-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 4px;
+}
+.settings-title {
+  font-size: 22px;
+  font-weight: 800;
+  color: var(--white);
+}
+.settings-saved {
+  font-size: 13px;
+  color: #4ade80;
+  font-weight: 600;
+  animation: fadeInUp 0.2s ease;
+}
+.settings-section {
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  border-radius: 18px;
+  overflow: hidden;
+}
+.settings-section-title {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--white-60);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  padding: 12px 16px 6px;
+}
+.settings-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 16px;
+  border-top: 1px solid var(--glass-border);
+  cursor: pointer;
+  transition: background 0.15s;
+  gap: 12px;
+}
+.settings-row:first-of-type { border-top: none; }
+.settings-row:active { background: var(--white-10); }
+.settings-row-text {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  flex: 1;
+}
+.settings-row-label {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--white);
+}
+.settings-row-sub {
+  font-size: 12px;
+  color: var(--white-60);
+}
+
+/* Toggle switch */
+.settings-toggle {
+  width: 48px;
+  height: 28px;
+  background: rgba(255,255,255,0.15);
+  border-radius: 14px;
+  position: relative;
+  flex-shrink: 0;
+  transition: background 0.2s ease;
+}
+.settings-toggle.on { background: #6d28d9; }
+.settings-toggle-thumb {
+  width: 22px;
+  height: 22px;
+  background: white;
+  border-radius: 50%;
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  transition: transform 0.2s ease;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.3);
+}
+.settings-toggle.on .settings-toggle-thumb { transform: translateX(20px); }
+
+/* Gender pills */
+.gender-pill-group {
+  display: flex;
+  gap: 6px;
+  flex-shrink: 0;
+}
+.gender-pill {
+  padding: 6px 12px;
+  border-radius: 20px;
+  border: 1px solid var(--glass-border);
+  background: transparent;
+  color: var(--white-60);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.gender-pill.active {
+  background: #6d28d9;
+  border-color: #6d28d9;
+  color: white;
+}
+
+/* Name edit */
+.settings-name-edit {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 4px;
+}
+.settings-name-input {
+  background: rgba(255,255,255,0.1);
+  border: 1px solid rgba(255,255,255,0.3);
+  border-radius: 8px;
+  color: white;
+  padding: 4px 8px;
+  font-size: 14px;
+  width: 120px;
+  outline: none;
+  font-family: inherit;
+  direction: rtl;
+}
+.settings-name-save, .settings-name-cancel {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: none;
+  font-size: 13px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.settings-name-save { background: #4ade80; color: #1a0533; }
+.settings-name-cancel { background: rgba(255,255,255,0.15); color: white; }
+.settings-edit-btn {
+  font-size: 13px;
+  color: #a78bfa;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-weight: 600;
+  padding: 4px 8px;
+}
+
+/* Danger buttons */
+.settings-danger-btn {
+  display: block;
+  width: calc(100% - 32px);
+  margin: 0 16px 12px;
+  padding: 12px 16px;
+  background: rgba(239,68,68,0.1);
+  border: 1px solid rgba(239,68,68,0.25);
+  border-radius: 12px;
+  color: #fca5a5;
+  font-size: 14px;
+  font-weight: 600;
+  text-align: right;
+  cursor: pointer;
+  transition: all 0.15s;
+  font-family: inherit;
+  direction: rtl;
+}
+.settings-danger-btn:first-of-type { margin-top: 8px; }
+.settings-danger-btn:active { background: rgba(239,68,68,0.2); }
+.settings-danger-btn.danger-red {
+  background: rgba(239,68,68,0.2);
+  border-color: rgba(239,68,68,0.5);
+  color: #f87171;
+}
+.settings-version {
+  text-align: center;
+  font-size: 12px;
+  color: rgba(255,255,255,0.2);
+  padding-bottom: 8px;
+}

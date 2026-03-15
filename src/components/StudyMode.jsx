@@ -3,7 +3,7 @@ import { categories, getAllWords, getCategoryById } from '../data/words.js'
 import { recordStudyToday } from '../utils/streak.js'
 import { updateSRS, getDueWords } from '../utils/srs.js'
 import { speakArabic } from '../utils/tts.js'
-import { g } from '../utils/user.js'
+import { g, isSoundEnabled, isAutoplayEnabled } from '../utils/user.js'
 
 function getProgress() {
   try {
@@ -220,6 +220,13 @@ export default function StudyMode({ categoryId, onBack }) {
     animateSwipe('left', goNext)
   }, [word, dunnoCount, progress, goNext, animateSwipe])
 
+  // 🔊 Auto-play when card flips to back
+  useEffect(() => {
+    if (isFlipped && word && isSoundEnabled() && isAutoplayEnabled()) {
+      speakArabic(word.arabic)
+    }
+  }, [isFlipped]) // eslint-disable-line react-hooks/exhaustive-deps
+
   // ⌨️ Keyboard shortcuts
   useEffect(() => {
     const handleKey = (e) => {
@@ -231,7 +238,7 @@ export default function StudyMode({ categoryId, onBack }) {
         markKnown()
       } else if (e.code === 'ArrowLeft' && isFlipped) {
         markDunno()
-      } else if ((e.key === 't' || e.key === 'T') && word) {
+      } else if ((e.key === 't' || e.key === 'T') && word && isSoundEnabled()) {
         speakArabic(word.arabic)
       }
     }
@@ -427,7 +434,7 @@ export default function StudyMode({ categoryId, onBack }) {
             <div className="arabic-word">{word.arabic}</div>
             <div className="transliteration">{word.transliteration}</div>
             <div className="tts-buttons" onClick={e => e.stopPropagation()}>
-              <button className="tts-btn" onClick={(e) => { e.stopPropagation(); speakArabic(word.arabic) }}>
+              <button className="tts-btn" onClick={(e) => { e.stopPropagation(); if (isSoundEnabled()) speakArabic(word.arabic) }}>
                 🔊 {g('שמעי', 'שמע')}
               </button>
             </div>
@@ -441,7 +448,7 @@ export default function StudyMode({ categoryId, onBack }) {
           <div className={`flashcard-face flashcard-back ${backClass}`}>
             <div className="arabic-small">{word.arabic}</div>
             <div className="tts-buttons" onClick={e => e.stopPropagation()}>
-              <button className="tts-btn" onClick={(e) => { e.stopPropagation(); speakArabic(word.arabic) }}>
+              <button className="tts-btn" onClick={(e) => { e.stopPropagation(); if (isSoundEnabled()) speakArabic(word.arabic) }}>
                 🔊 {g('שמעי', 'שמע')}
               </button>
             </div>

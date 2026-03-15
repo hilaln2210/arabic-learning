@@ -3,17 +3,18 @@ import Home from './components/Home.jsx'
 import StudyMode from './components/StudyMode.jsx'
 import QuizMode from './components/QuizMode.jsx'
 import Progress from './components/Progress.jsx'
+import Settings from './components/Settings.jsx'
 import Onboarding from './components/Onboarding.jsx'
 import { hasUsername } from './utils/user.js'
 import { unlockAudio } from './utils/tts.js'
 
 export default function App() {
-  // Unlock iOS audio on first tap anywhere
   useEffect(() => {
     const handler = () => { unlockAudio(); document.removeEventListener('touchstart', handler) }
     document.addEventListener('touchstart', handler, { once: true })
     return () => document.removeEventListener('touchstart', handler)
   }, [])
+
   const [ready, setReady] = useState(hasUsername())
   const [activeTab, setActiveTab] = useState('home')
   const [studyCategoryId, setStudyCategoryId] = useState(null)
@@ -46,19 +47,16 @@ export default function App() {
           <Home key={progressKey} onStartStudy={handleStartStudy} onStartQuiz={handleStartQuiz} />
         )}
         {activeTab === 'study' && (
-          <StudyMode
-            categoryId={studyCategoryId}
-            onBack={handleBackToHome}
-          />
+          <StudyMode categoryId={studyCategoryId} onBack={handleBackToHome} />
         )}
         {activeTab === 'quiz' && (
-          <QuizMode
-            categoryId={studyCategoryId}
-            onBack={handleBackToHome}
-          />
+          <QuizMode categoryId={studyCategoryId} onBack={handleBackToHome} />
         )}
         {activeTab === 'progress' && (
           <Progress onBack={handleBackToHome} />
+        )}
+        {activeTab === 'settings' && (
+          <Settings onDone={handleBackToHome} />
         )}
       </main>
 
@@ -90,6 +88,13 @@ export default function App() {
         >
           <span className="nav-icon">📊</span>
           <span className="nav-label">התקדמות</span>
+        </button>
+        <button
+          className={`nav-btn ${activeTab === 'settings' ? 'active' : ''}`}
+          onClick={() => setActiveTab('settings')}
+        >
+          <span className="nav-icon">⚙️</span>
+          <span className="nav-label">הגדרות</span>
         </button>
       </nav>
     </div>

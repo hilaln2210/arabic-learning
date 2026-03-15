@@ -6,7 +6,9 @@ exports.handler = async (event) => {
   if (!text) return { statusCode: 400, body: 'Missing text' }
 
   try {
-    const url = `https://translate.google.com/translate_tts?ie=UTF-8&q=${encodeURIComponent(text)}&tl=ar&client=tw-ob&ttsspeed=0.9`
+    // Append period → forces pausal Arabic pronunciation (prevents tanwin: baytun→bayt)
+    const ttsText = /[.،؟!]$/.test(text) ? text : text + '.'
+    const url = `https://translate.google.com/translate_tts?ie=UTF-8&q=${encodeURIComponent(ttsText)}&tl=ar&client=tw-ob&ttsspeed=0.9`
 
     const resp = await fetch(url, {
       headers: {
