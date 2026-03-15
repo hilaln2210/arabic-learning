@@ -476,7 +476,15 @@ export default function StudyMode({ categoryId, onBack }) {
             </div>
             {word.example && (
               <div className="example-box">
-                <div className="example-header">💬 דוגמה</div>
+                <div className="example-header">
+                  <span>💬 דוגמה</span>
+                  {isSoundEnabled() && (
+                    <button
+                      className="example-tts-btn"
+                      onClick={e => { e.stopPropagation(); speakArabic(word.example.ar, word.id + '_example') }}
+                    >🔊</button>
+                  )}
+                </div>
                 <div className="example-ar">{word.example.ar}</div>
                 <div className="example-translit">{word.example.translit}</div>
                 <div className="example-he">{word.example.he}</div>
