@@ -118,6 +118,7 @@ export default function StudyMode({ categoryId, onBack }) {
   const [swipeAnim, setSwipeAnim] = useState(null)
   const [dunnoCount, setDunnoCount] = useState({}) // { [wordId]: count }
   const [funnyMsg, setFunnyMsg] = useState(null)
+  const [trickAlt, setTrickAlt] = useState({}) // { [wordId]: true } = showing trick2
 
 
   const FUNNY_MESSAGES = [
@@ -387,13 +388,22 @@ export default function StudyMode({ categoryId, onBack }) {
               </button>
             </div>
             <div className="hebrew-translation">{word.hebrew}</div>
-            <div className={`trick-box${dunnoCount[word.id] >= 2 ? ' trick-upgrade' : ''}`}>
+            <div className={`trick-box${(trickAlt[word.id] || dunnoCount[word.id] >= 2) && word.trick2 ? ' trick-upgrade' : ''}`}>
               <div className="trick-box-header">
                 <span>🧠</span>
-                <span>{dunnoCount[word.id] >= 2 ? 'טריק חדש!' : 'טריק לזכירה'}</span>
+                <span>{(trickAlt[word.id] || dunnoCount[word.id] >= 2) && word.trick2 ? 'טריק חלופי' : 'טריק לזכירה'}</span>
+                {word.trick2 && (
+                  <button
+                    className="trick-swap-btn"
+                    onClick={e => { e.stopPropagation(); setTrickAlt(prev => ({ ...prev, [word.id]: !prev[word.id] })) }}
+                    title="החלף טריק"
+                  >
+                    🔄
+                  </button>
+                )}
               </div>
               <div className="trick-text">
-                {dunnoCount[word.id] >= 2 && word.trick2 ? word.trick2 : word.trick}
+                {(trickAlt[word.id] || dunnoCount[word.id] >= 2) && word.trick2 ? word.trick2 : word.trick}
               </div>
             </div>
             {word.example && (

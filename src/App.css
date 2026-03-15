@@ -684,6 +684,25 @@ body {
   transition: background 0.3s, border-color 0.3s;
 }
 
+.trick-box-header {
+  position: relative;
+}
+.trick-swap-btn {
+  margin-right: auto;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 15px;
+  opacity: 0.6;
+  padding: 0 2px;
+  line-height: 1;
+  transition: opacity 0.2s, transform 0.2s;
+}
+.trick-swap-btn:hover, .trick-swap-btn:active {
+  opacity: 1;
+  transform: rotate(180deg);
+}
+
 .trick-box.trick-upgrade {
   background: rgba(168, 85, 247, 0.12);
   border-color: rgba(168, 85, 247, 0.4);
