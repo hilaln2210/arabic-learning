@@ -3,6 +3,7 @@ import { categories, getAllWords, getCategoryById } from '../data/words.js'
 import { getStreak, getBestStreak, getTotalStudyDays, getWordOfDay } from '../utils/streak.js'
 import { getUsername, g } from '../utils/user.js'
 import { getLevelInfo } from '../utils/xp.js'
+import { speakArabic } from '../utils/tts.js'
 
 function getProgress() {
   try {
@@ -148,6 +149,7 @@ export default function Home({ onStartStudy, onStartQuiz, onStartMatch, onStartL
       {/* Word of the Day */}
       <div className="wod-card">
         <div className="wod-label">מילת היום</div>
+        <button className="wod-play-btn" onClick={() => speakArabic(wod.arabic, wod.id)} title="האזיני למילה">🔊</button>
         <div className="wod-arabic">{wod.arabic}</div>
         <div className="wod-translit">{wod.transliteration}</div>
         <div className="wod-hebrew">{wod.hebrew}</div>
