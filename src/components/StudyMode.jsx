@@ -143,7 +143,10 @@ export default function StudyMode({ categoryId, onBack }) {
 
   useEffect(() => {
     recordStudyToday()
-  }, [])
+    if (selectedCategoryId && selectedCategoryId !== '__srs__' && selectedCategoryId !== '__all__') {
+      try { localStorage.setItem('arabic_last_category', selectedCategoryId) } catch {}
+    }
+  }, [selectedCategoryId])
 
   // Build the active word list
   const activeWords = reviewWords || (() => {

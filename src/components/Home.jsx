@@ -1,8 +1,11 @@
 import { useMemo } from 'react'
-import { categories, getAllWords } from '../data/words.js'
+import { categories, getAllWords, getCategoryById } from '../data/words.js'
 import { getStreak, getBestStreak, getTotalStudyDays, getWordOfDay } from '../utils/streak.js'
-import { getDueCount } from '../utils/srs.js'
 import { getUsername, g } from '../utils/user.js'
+
+function getLastCategory() {
+  try { return localStorage.getItem('arabic_last_category') } catch { return null }
+}
 
 function getProgress() {
   try {
@@ -115,7 +118,8 @@ export default function Home({ onStartStudy, onStartQuiz }) {
   const bestStreak = useMemo(() => getBestStreak(), [])
   const totalDays = useMemo(() => getTotalStudyDays(), [])
   const wod = useMemo(() => getWordOfDay(allWords), [allWords])
-  const dueCount = useMemo(() => getDueCount(allWords), [allWords])
+  const lastCatId = useMemo(() => getLastCategory(), [])
+  const lastCat = useMemo(() => lastCatId ? getCategoryById(lastCatId) : null, [lastCatId])
 
   const totalKnown = useMemo(() => {
     return allWords.filter(w => progress[w.id] === 'known').length
@@ -148,15 +152,15 @@ export default function Home({ onStartStudy, onStartQuiz }) {
         )}
       </div>
 
-      {/* SRS Daily Review Banner */}
-      {dueCount > 0 && (
-        <button className="srs-review-banner" onClick={() => onStartStudy('__srs__')}>
-          <span className="srs-review-icon">📅</span>
-          <div className="srs-review-text">
-            <span className="srs-review-count">{dueCount} מילים להחזרה היום</span>
-            <span className="srs-review-sub">חזרי על מה שנקבע להיום לפי מרווחי חזרה</span>
+      {/* Continue where you left off */}
+      {lastCat && (
+        <button className="continue-banner" onClick={() => onStartStudy(lastCat.id)}>
+          <span className="continue-icon">{lastCat.emoji}</span>
+          <div className="continue-text">
+            <span className="continue-title">המשיכי מהיכן שעצרת</span>
+            <span className="continue-sub">{lastCat.name}</span>
           </div>
-          <span className="srs-review-arrow">←</span>
+          <span className="continue-arrow">←</span>
         </button>
       )}
 
