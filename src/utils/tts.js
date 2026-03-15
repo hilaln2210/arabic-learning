@@ -1,20 +1,53 @@
-// Arabic TTS — fetch → AudioContext (bypasses autoplay policy)
-// iOS Safari fix: resume ctx synchronously inside user gesture, before any await
+// Arabic TTS
+// Strategy: Web Speech API first (works on iOS/Android with built-in Arabic voices)
+//           Fall back to server proxy (Netlify function / local dev proxy)
 
-let currentSource = null
+// ── Web Speech API ────────────────────────────────────────────────────────────
+let voices = []
+
+function loadVoices() {
+  voices = window.speechSynthesis?.getVoices() || []
+}
+
+if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+  loadVoices()
+  window.speechSynthesis.addEventListener('voiceschanged', loadVoices)
+}
+
+function getArabicVoice() {
+  // Prefer exact ar-SA, then any Arabic voice
+  return voices.find(v => v.lang === 'ar-SA') ||
+         voices.find(v => v.lang.startsWith('ar')) ||
+         null
+}
+
+function speakViaSpeechAPI(text) {
+  const voice = getArabicVoice()
+  if (!voice) return false
+  window.speechSynthesis.cancel()
+  const utt = new SpeechSynthesisUtterance(text)
+  utt.voice = voice
+  utt.lang = 'ar-SA'
+  utt.rate = 0.9
+  utt.pitch = 1
+  window.speechSynthesis.speak(utt)
+  return true
+}
+
+// ── AudioContext (server fallback) ────────────────────────────────────────────
 let audioCtx = null
+let currentSource = null
 
 function getAudioContext() {
   if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)()
   return audioCtx
 }
 
-// Resume + play 1-sample silence to fully unlock iOS Safari AudioContext
+// Call synchronously inside user gesture to unlock iOS AudioContext
 function unlockContextSync() {
   const ctx = getAudioContext()
   if (ctx.state === 'suspended') {
     ctx.resume()
-    // Play inaudible buffer — required to unlock iOS AudioContext
     const buf = ctx.createBuffer(1, 1, 22050)
     const src = ctx.createBufferSource()
     src.buffer = buf
@@ -23,48 +56,56 @@ function unlockContextSync() {
   }
 }
 
-function decodeAudio(ctx, arrayBuf) {
-  // Use callback form for iOS 14 compatibility
-  return new Promise((resolve, reject) => {
+async function speakViaServer(text) {
+  // Netlify function in production, Vite proxy in dev
+  const url = `/.netlify/functions/tts?text=${encodeURIComponent(text)}`
+  const res = await fetch(url)
+  if (!res.ok) throw new Error(`HTTP ${res.status}`)
+  const arrayBuf = await res.arrayBuffer()
+  const ctx = getAudioContext()
+  const decoded = await new Promise((resolve, reject) => {
     ctx.decodeAudioData(arrayBuf, resolve, reject)
   })
+  try { currentSource?.stop() } catch {}
+  const source = ctx.createBufferSource()
+  source.buffer = decoded
+  source.connect(ctx.destination)
+  source.start(0)
+  currentSource = source
 }
 
+// ── Public API ────────────────────────────────────────────────────────────────
 export async function speakArabic(text) {
   if (!text) return
 
-  // MUST happen synchronously inside the click handler (user gesture)
-  // — before any await — so iOS Safari allows audio to play
+  // Unlock AudioContext synchronously (inside user gesture, before any await)
   unlockContextSync()
-  stopAll()
 
-  const url = `/tts?text=${encodeURIComponent(text)}&slow=0`
+  // iOS Safari / Android: use built-in Arabic voice if available
+  // Give voices a moment to load on first call
+  if (voices.length === 0) {
+    loadVoices()
+    if (voices.length === 0) {
+      await new Promise(r => setTimeout(r, 200))
+      loadVoices()
+    }
+  }
 
+  if (speakViaSpeechAPI(text)) return
+
+  // No Arabic voice — fall back to server (Netlify function / local proxy)
   try {
-    const res = await fetch(url)
-    if (!res.ok) throw new Error(`HTTP ${res.status}`)
-    const arrayBuf = await res.arrayBuffer()
-
-    const ctx = getAudioContext()
-    const decoded = await decodeAudio(ctx, arrayBuf)
-
-    const source = ctx.createBufferSource()
-    source.buffer = decoded
-    source.connect(ctx.destination)
-    source.start(0)
-    currentSource = source
+    await speakViaServer(text)
   } catch (e) {
     console.warn('TTS error:', e.message)
   }
 }
 
-function stopAll() {
-  try { currentSource?.stop() } catch {}
-  currentSource = null
-}
-
 export function unlockAudio() {
   try { unlockContextSync() } catch {}
+  loadVoices()
 }
 
-export function preloadVoices() {}
+export function preloadVoices() {
+  loadVoices()
+}

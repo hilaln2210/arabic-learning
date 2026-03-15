@@ -5,9 +5,11 @@ import { VitePWA } from 'vite-plugin-pwa'
 export default defineConfig({
   server: {
     proxy: {
-      '/tts': {
+      // Dev: redirect Netlify function path → local tts_server.py
+      '/.netlify/functions/tts': {
         target: 'http://localhost:5050',
         changeOrigin: false,
+        rewrite: (path) => '/tts' + path.replace('/.netlify/functions/tts', '')
       }
     }
   },
