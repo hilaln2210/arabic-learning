@@ -3,6 +3,7 @@ import Home from './components/Home.jsx'
 import StudyMode from './components/StudyMode.jsx'
 import QuizMode from './components/QuizMode.jsx'
 import MatchGame from './components/MatchGame.jsx'
+import ListeningQuiz from './components/ListeningQuiz.jsx'
 import Progress from './components/Progress.jsx'
 import Settings from './components/Settings.jsx'
 import Onboarding from './components/Onboarding.jsx'
@@ -36,6 +37,11 @@ export default function App() {
     setActiveTab('match')
   }
 
+  const handleStartListen = (categoryId) => {
+    setStudyCategoryId(categoryId)
+    setActiveTab('listen')
+  }
+
   const handleBackToHome = () => {
     setActiveTab('home')
     setStudyCategoryId(null)
@@ -55,6 +61,7 @@ export default function App() {
             onStartStudy={handleStartStudy}
             onStartQuiz={handleStartQuiz}
             onStartMatch={handleStartMatch}
+            onStartListen={handleStartListen}
           />
         )}
         {activeTab === 'study' && (
@@ -65,6 +72,9 @@ export default function App() {
         )}
         {activeTab === 'match' && (
           <MatchGame categoryId={studyCategoryId} onBack={handleBackToHome} />
+        )}
+        {activeTab === 'listen' && (
+          <ListeningQuiz categoryId={studyCategoryId} onBack={handleBackToHome} />
         )}
         {activeTab === 'progress' && (
           <Progress onBack={handleBackToHome} />
@@ -89,6 +99,11 @@ export default function App() {
           onClick={() => { setStudyCategoryId(null); setActiveTab('quiz') }}>
           <span className="nav-icon">🎯</span>
           <span className="nav-label">חידון</span>
+        </button>
+        <button className={`nav-btn ${activeTab === 'listen' ? 'active' : ''}`}
+          onClick={() => { setStudyCategoryId(null); setActiveTab('listen') }}>
+          <span className="nav-icon">🎧</span>
+          <span className="nav-label">האזנה</span>
         </button>
         <button className={`nav-btn ${activeTab === 'match' ? 'active' : ''}`}
           onClick={() => { setStudyCategoryId(null); setActiveTab('match') }}>

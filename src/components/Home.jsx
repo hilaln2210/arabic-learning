@@ -57,7 +57,7 @@ const CAT_CLASS = {
   tradition: 'cat-tradition', math: 'cat-math',
 }
 
-export default function Home({ onStartStudy, onStartQuiz, onStartMatch }) {
+export default function Home({ onStartStudy, onStartQuiz, onStartMatch, onStartListen }) {
   const progress = useMemo(() => getProgress(), [])
   const allWords = useMemo(() => getAllWords(), [])
   const streak = useMemo(() => getStreak(), [])
@@ -189,6 +189,10 @@ export default function Home({ onStartStudy, onStartQuiz, onStartMatch }) {
         <button className="game-mode-btn mode-match" onClick={() => onStartMatch?.(null)}>
           <span className="mode-icon">🃏</span>
           <span className="mode-label">התאמה</span>
+        </button>
+        <button className="game-mode-btn mode-listen" onClick={() => onStartListen?.(null)}>
+          <span className="mode-icon">🎧</span>
+          <span className="mode-label">האזנה</span>
         </button>
       </div>
 
