@@ -1,0 +1,97 @@
+import { useState, useEffect } from 'react'
+import Home from './components/Home.jsx'
+import StudyMode from './components/StudyMode.jsx'
+import QuizMode from './components/QuizMode.jsx'
+import Progress from './components/Progress.jsx'
+import Onboarding from './components/Onboarding.jsx'
+import { hasUsername } from './utils/user.js'
+import { unlockAudio } from './utils/tts.js'
+
+export default function App() {
+  // Unlock iOS audio on first tap anywhere
+  useEffect(() => {
+    const handler = () => { unlockAudio(); document.removeEventListener('touchstart', handler) }
+    document.addEventListener('touchstart', handler, { once: true })
+    return () => document.removeEventListener('touchstart', handler)
+  }, [])
+  const [ready, setReady] = useState(hasUsername())
+  const [activeTab, setActiveTab] = useState('home')
+  const [studyCategoryId, setStudyCategoryId] = useState(null)
+  const [progressKey, setProgressKey] = useState(0)
+
+  const handleStartStudy = (categoryId) => {
+    setStudyCategoryId(categoryId)
+    setActiveTab('study')
+  }
+
+  const handleStartQuiz = (categoryId) => {
+    setStudyCategoryId(categoryId)
+    setActiveTab('quiz')
+  }
+
+  const handleBackToHome = () => {
+    setActiveTab('home')
+    setStudyCategoryId(null)
+    setProgressKey(k => k + 1)
+  }
+
+  if (!ready) {
+    return <Onboarding onDone={() => setReady(true)} />
+  }
+
+  return (
+    <div className="app-container">
+      <main className="app-main">
+        {activeTab === 'home' && (
+          <Home key={progressKey} onStartStudy={handleStartStudy} onStartQuiz={handleStartQuiz} />
+        )}
+        {activeTab === 'study' && (
+          <StudyMode
+            categoryId={studyCategoryId}
+            onBack={handleBackToHome}
+          />
+        )}
+        {activeTab === 'quiz' && (
+          <QuizMode
+            categoryId={studyCategoryId}
+            onBack={handleBackToHome}
+          />
+        )}
+        {activeTab === 'progress' && (
+          <Progress onBack={handleBackToHome} />
+        )}
+      </main>
+
+      <nav className="bottom-nav">
+        <button
+          className={`nav-btn ${activeTab === 'home' ? 'active' : ''}`}
+          onClick={() => { setActiveTab('home'); setProgressKey(k => k + 1) }}
+        >
+          <span className="nav-icon">🏠</span>
+          <span className="nav-label">בית</span>
+        </button>
+        <button
+          className={`nav-btn ${activeTab === 'study' ? 'active' : ''}`}
+          onClick={() => { setStudyCategoryId(null); setActiveTab('study') }}
+        >
+          <span className="nav-icon">📖</span>
+          <span className="nav-label">למידה</span>
+        </button>
+        <button
+          className={`nav-btn ${activeTab === 'quiz' ? 'active' : ''}`}
+          onClick={() => { setStudyCategoryId(null); setActiveTab('quiz') }}
+        >
+          <span className="nav-icon">🎯</span>
+          <span className="nav-label">חידון</span>
+        </button>
+        <button
+          className={`nav-btn ${activeTab === 'progress' ? 'active' : ''}`}
+          onClick={() => setActiveTab('progress')}
+        >
+          <span className="nav-icon">📊</span>
+          <span className="nav-label">התקדמות</span>
+        </button>
+      </nav>
+    </div>
+  )
+}
