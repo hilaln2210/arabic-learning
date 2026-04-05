@@ -45,7 +45,7 @@ export default function Dictionary({ onBack }) {
     setTranslating(true)
     setTranslated(null)
     try {
-      const resp = await fetch(`/.netlify/functions/translate?text=${encodeURIComponent(text)}`)
+      const resp = await fetch(`/.netlify/functions/translate?text=${encodeURIComponent(text)}&v=2`)
       if (!resp.ok) throw new Error('Translation failed')
       const data = await resp.json()
       if (data.arabic) setTranslated(data)

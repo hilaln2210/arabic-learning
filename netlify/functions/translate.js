@@ -66,7 +66,7 @@ exports.handler = async (event) => {
       statusCode: 200,
       headers: {
         'Content-Type': 'application/json',
-        'Cache-Control': 'public, max-age=86400',
+        'Cache-Control': 'public, max-age=3600',
         'Access-Control-Allow-Origin': '*'
       },
       body: JSON.stringify({ arabic, translit, source: text, english: englishWord, dictionary })
