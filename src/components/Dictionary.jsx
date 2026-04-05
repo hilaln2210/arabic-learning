@@ -31,7 +31,7 @@ export default function Dictionary({ onBack }) {
     return [...exact, ...startsWith, ...contains].slice(0, 20)
   }, [query, allWords])
 
-  // Auto-translate when no local results
+  // Always fetch translation for dictionary entries (parts of speech)
   const fetchTranslation = useCallback(async (text) => {
     setTranslating(true)
     setTranslated(null)
@@ -49,7 +49,7 @@ export default function Dictionary({ onBack }) {
 
   useEffect(() => {
     const q = query.trim()
-    if (!q || results.length > 0) {
+    if (!q) {
       setTranslated(null)
       setTranslating(false)
       return
@@ -57,7 +57,7 @@ export default function Dictionary({ onBack }) {
     clearTimeout(debounceRef.current)
     debounceRef.current = setTimeout(() => fetchTranslation(q), 500)
     return () => clearTimeout(debounceRef.current)
-  }, [query, results.length, fetchTranslation])
+  }, [query, fetchTranslation])
 
   const renderWordCard = (word) => (
     <div key={word.id} className="dictionary-card">
@@ -121,31 +121,59 @@ export default function Dictionary({ onBack }) {
       <div className="dictionary-results">
         {results.map(renderWordCard)}
 
-        {query && results.length === 0 && translating && (
+        {query && translating && (
           <div className="dictionary-translating">
             <div className="dictionary-spinner" />
             <p>מתרגם...</p>
           </div>
         )}
 
-        {query && results.length === 0 && !translating && translated && (
-          <div className="dictionary-card dictionary-card-translated">
-            <div className="dictionary-card-source">Google Translate</div>
-            <div className="dictionary-card-top">
-              <div className="dictionary-arabic">{translated.arabic}</div>
-              <button
-                className="dictionary-speak-btn"
-                onClick={() => speakArabic(translated.arabic)}
-                title="השמע"
-              >
-                🔊
-              </button>
-            </div>
-            {translated.translit && (
-              <div className="dictionary-translit">{translated.translit}</div>
+        {query && !translating && translated && (
+          <>
+            {results.length === 0 && (
+              <div className="dictionary-card dictionary-card-translated">
+                <div className="dictionary-card-source">Google Translate</div>
+                <div className="dictionary-card-top">
+                  <div className="dictionary-arabic">{translated.arabic}</div>
+                  <button
+                    className="dictionary-speak-btn"
+                    onClick={() => speakArabic(translated.arabic)}
+                    title="השמע"
+                  >
+                    🔊
+                  </button>
+                </div>
+                {translated.translit && (
+                  <div className="dictionary-translit">{translated.translit}</div>
+                )}
+                <div className="dictionary-hebrew">{translated.source}</div>
+              </div>
             )}
-            <div className="dictionary-hebrew">{translated.source}</div>
-          </div>
+
+            {translated.dictionary?.length > 0 && (
+              <div className="dictionary-pos-section">
+                <div className="dictionary-pos-title">משמעויות נוספות</div>
+                {translated.dictionary.map((entry, i) => (
+                  <div key={i} className="dictionary-pos-card">
+                    <div className="dictionary-pos-badge">{entry.posLabel}</div>
+                    <div className="dictionary-pos-items">
+                      {entry.items.map((item, j) => (
+                        <div key={j} className="dictionary-pos-item">
+                          <span className="dictionary-pos-arabic">{item.arabic}</span>
+                          <button
+                            className="dictionary-speak-btn-sm"
+                            onClick={() => speakArabic(item.arabic)}
+                          >
+                            🔊
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </>
         )}
 
         {query && results.length === 0 && !translating && !translated && (

@@ -2879,3 +2879,74 @@ body {
 @keyframes dict-spin {
   to { transform: rotate(360deg); }
 }
+
+.dictionary-pos-section {
+  margin-top: 8px;
+}
+
+.dictionary-pos-title {
+  font-size: 14px;
+  color: var(--white-80);
+  margin-bottom: 10px;
+  font-weight: 600;
+}
+
+.dictionary-pos-card {
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  border-radius: 14px;
+  padding: 14px;
+  margin-bottom: 10px;
+}
+
+.dictionary-pos-badge {
+  display: inline-block;
+  background: var(--purple);
+  color: var(--white);
+  font-size: 12px;
+  font-weight: 700;
+  padding: 3px 10px;
+  border-radius: 8px;
+  margin-bottom: 10px;
+}
+
+.dictionary-pos-items {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.dictionary-pos-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--white-10);
+}
+
+.dictionary-pos-item:last-child {
+  border-bottom: none;
+}
+
+.dictionary-pos-arabic {
+  font-size: 22px;
+  color: var(--white);
+}
+
+.dictionary-speak-btn-sm {
+  background: var(--white-10);
+  border: 1px solid var(--glass-border);
+  border-radius: 50%;
+  width: 34px;
+  height: 34px;
+  font-size: 16px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.dictionary-speak-btn-sm:active {
+  background: var(--white-20);
+}
