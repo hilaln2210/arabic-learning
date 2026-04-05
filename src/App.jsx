@@ -7,6 +7,7 @@ import ListeningQuiz from './components/ListeningQuiz.jsx'
 import Progress from './components/Progress.jsx'
 import Settings from './components/Settings.jsx'
 import Onboarding from './components/Onboarding.jsx'
+import Dictionary from './components/Dictionary.jsx'
 import { hasUsername } from './utils/user.js'
 import { unlockAudio } from './utils/tts.js'
 
@@ -79,6 +80,9 @@ export default function App() {
         {activeTab === 'progress' && (
           <Progress onBack={handleBackToHome} />
         )}
+        {activeTab === 'dictionary' && (
+          <Dictionary onBack={handleBackToHome} />
+        )}
         {activeTab === 'settings' && (
           <Settings onDone={handleBackToHome} />
         )}
@@ -90,9 +94,14 @@ export default function App() {
           <span className="nav-icon">🏠</span>
           <span className="nav-label">בית</span>
         </button>
+        <button className={`nav-btn ${activeTab === 'dictionary' ? 'active' : ''}`}
+          onClick={() => setActiveTab('dictionary')}>
+          <span className="nav-icon">📖</span>
+          <span className="nav-label">מילון</span>
+        </button>
         <button className={`nav-btn ${activeTab === 'study' ? 'active' : ''}`}
           onClick={() => { setStudyCategoryId(null); setActiveTab('study') }}>
-          <span className="nav-icon">📖</span>
+          <span className="nav-icon">✏️</span>
           <span className="nav-label">למידה</span>
         </button>
         <button className={`nav-btn ${activeTab === 'quiz' ? 'active' : ''}`}
