@@ -28,7 +28,16 @@ export default function Dictionary({ onBack }) {
       else if (w.transliteration?.includes(q)) contains.push(w)
       else if (w.arabic?.includes(q)) contains.push(w)
     }
-    return [...exact, ...startsWith, ...contains].slice(0, 20)
+    // Deduplicate by arabic text — keep first match (best ranked)
+    const seen = new Set()
+    const deduped = []
+    for (const w of [...exact, ...startsWith, ...contains]) {
+      if (!seen.has(w.arabic)) {
+        seen.add(w.arabic)
+        deduped.push(w)
+      }
+    }
+    return deduped.slice(0, 20)
   }, [query, allWords])
 
   // Always fetch translation for dictionary entries (parts of speech)
