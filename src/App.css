@@ -2848,3 +2848,34 @@ body {
   color: var(--white-80);
   font-size: 13px;
 }
+
+.dictionary-card-translated {
+  border-color: rgba(99, 102, 241, 0.4);
+}
+
+.dictionary-card-source {
+  font-size: 11px;
+  color: var(--indigo-light);
+  margin-bottom: 8px;
+  opacity: 0.7;
+}
+
+.dictionary-translating {
+  text-align: center;
+  padding: 40px 20px;
+  color: var(--white-80);
+}
+
+.dictionary-spinner {
+  width: 32px;
+  height: 32px;
+  border: 3px solid var(--white-20);
+  border-top-color: var(--purple-light);
+  border-radius: 50%;
+  margin: 0 auto 12px;
+  animation: dict-spin 0.8s linear infinite;
+}
+
+@keyframes dict-spin {
+  to { transform: rotate(360deg); }
+}
