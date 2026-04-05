@@ -40,17 +40,38 @@ exports.handler = async (event) => {
     const translit = arData[0]?.[0]?.[3] || ''
     const englishWord = enData[0]?.[0]?.[0] || ''
 
-    // Step 3: English → Arabic with dictionary (dt=bd gives parts of speech)
+    // Step 3: English → Arabic with dictionary (dt=bd gives parts of speech + back_translations)
     let dictionary = []
     if (englishWord) {
       const dictData = await googleTranslate('en', 'ar', englishWord, 'dt=t&dt=rm&dt=bd')
 
       if (dictData[1]) {
+        // Collect all unique English back-translations for Hebrew lookup
+        const allEnglishWords = new Set()
+        for (const entry of dictData[1]) {
+          for (const d of (entry[2] || [])) {
+            for (const w of (d[1] || [])) allEnglishWords.add(w)
+          }
+        }
+
+        // Batch translate English back-translations → Hebrew
+        const enToHe = {}
+        if (allEnglishWords.size > 0) {
+          const batch = [...allEnglishWords].slice(0, 20).join('\n')
+          const heData = await googleTranslate('en', 'iw', batch, 'dt=t')
+          const heLines = (heData[0] || []).map(s => s[0]).join('').split('\n')
+          const enArr = [...allEnglishWords].slice(0, 20)
+          for (let i = 0; i < Math.min(enArr.length, heLines.length); i++) {
+            enToHe[enArr[i]] = heLines[i]?.trim() || enArr[i]
+          }
+        }
+
         for (const entry of dictData[1]) {
           const pos = entry[0] || ''
           const details = entry[2] || []
-          const items = details.slice(0, 4).map(d => ({
+          const items = details.slice(0, 3).map(d => ({
             arabic: d[0] || '',
+            meanings: (d[1] || []).slice(0, 3).map(w => enToHe[w] || w),
             score: d[3] || 0,
           }))
           dictionary.push({

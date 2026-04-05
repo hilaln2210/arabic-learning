@@ -168,7 +168,12 @@ export default function Dictionary({ onBack }) {
                     <div className="dictionary-pos-items">
                       {entry.items.map((item, j) => (
                         <div key={j} className="dictionary-pos-item">
-                          <span className="dictionary-pos-arabic">{item.arabic}</span>
+                          <div className="dictionary-pos-item-info">
+                            <span className="dictionary-pos-arabic">{item.arabic}</span>
+                            {item.meanings?.length > 0 && (
+                              <span className="dictionary-pos-meanings">{item.meanings.join(', ')}</span>
+                            )}
+                          </div>
                           <button
                             className="dictionary-speak-btn-sm"
                             onClick={() => speakArabic(item.arabic)}

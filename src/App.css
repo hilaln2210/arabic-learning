@@ -2928,9 +2928,21 @@ body {
   border-bottom: none;
 }
 
+.dictionary-pos-item-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
 .dictionary-pos-arabic {
   font-size: 22px;
   color: var(--white);
+}
+
+.dictionary-pos-meanings {
+  font-size: 13px;
+  color: var(--white-80);
 }
 
 .dictionary-speak-btn-sm {
